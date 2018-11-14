@@ -1,0 +1,5 @@
+js
+contracts
+.babelrc
+!build
+build/solcStandard*
