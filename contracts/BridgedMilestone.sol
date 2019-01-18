@@ -1,9 +1,7 @@
-pragma solidity 0.4.18;
+pragma solidity ^0.4.24;
 
 /*
-    Copyright 2017
-    RJ Ewing <perissology@protonmail.com>
-    S van Heummen <satya.vh@gmail.com>
+    Copyright 2019 RJ Ewing <perissology@protonmail.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,15 +17,13 @@ pragma solidity 0.4.18;
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import "giveth-liquidpledging/contracts/LiquidPledging.sol";
-import "@aragon/os/contracts/apps/AragonApp.sol";
-import "@aragon/os/contracts/kernel/IKernel.sol";
+import "./CappedMilestone.sol";
+import "giveth-liquidpledging/contracts/lib/aragon/IKernelEnhanced.sol";
 import "giveth-bridge/contracts/IForeignGivethBridge.sol";
 
-
-/// @title LPPMilestone
+/// @title BrigedMilestone
 /// @author RJ Ewing<perissology@protonmail.com>
-/// @notice The LPPMilestone contract is a plugin contract for liquidPledging,
+/// @notice The BridgedMilestone contract is a plugin contract for liquidPledging,
 ///  extending the functionality of a liquidPledging project. This contract
 ///  prevents withdrawals from any pledges this contract is the owner of.
 ///  This contract has 4 roles. The admin, a reviewer, and a recipient role. 
@@ -37,198 +33,64 @@ import "giveth-bridge/contracts/IForeignGivethBridge.sol";
 ///  2. The reviewer can cancel the milestone. 
 ///  3. The recipient role will receive the pledge's owned by this milestone. 
 
-contract BridgedMilestone is AragonApp {
-    uint private constant TO_OWNER = 256;
-    uint private constant TO_INTENDEDPROJECT = 511;
+contract BridgedMilestone is CappedMilestone {
 
-    // keccack256(Kernel.APP_ADDR_NAMESPACE(), keccack256("ForeignGivethBridge"))
-    bytes32 constant public FOREIGN_BRIDGE_INSTANCE = 0xa46b3f7f301ac0173ef5564df485fccae3b60583ddb12c767fea607ff6971d0b;
-    address public constant ANY_TOKEN = address(-1);
+    // keccak256("ForeignGivethBridge")
+    bytes32 constant public FOREIGN_BRIDGE_APP_ID = 0x304d2fc3aa031b861c3906c5d3f8d5c80d2e6adb979d9cc223a6a3f445cb7e1d;
 
-    enum MilestoneState { ACTIVE, NEEDS_REVIEW, COMPLETED }
-
-    LiquidPledging public liquidPledging;
-    uint64 public idProject;
-
-    address public reviewer;
     address public recipient;
-    address public manager;
 
-    address public acceptedToken;
-    MilestoneState public state = MilestoneState.ACTIVE;
-
-    mapping (address => uint256) public received;
-
-    // @notice After marking complete, and after this timeout, the recipient can withdraw the money
-    // even if the milestone was not marked as complete by the reviewer.
-    uint public reviewTimeoutSeconds;
-    uint public reviewTimeout;
-
-    event RequestReview(address indexed liquidPledging, uint64 indexed idProject);
-    event RejectCompleted(address indexed liquidPledging, uint64 indexed idProject);
-    event ApproveCompleted(address indexed liquidPledging, uint64 indexed idProject);
-    event ReviewerChanged(address indexed liquidPledging, uint64 indexed idProject, address reviewer);
     event RecipientChanged(address indexed liquidPledging, uint64 indexed idProject, address recipient);
     event PaymentCollected(address indexed liquidPledging, uint64 indexed idProject);
 
-
-    modifier onlyReviewer() {
-        require(msg.sender == reviewer);
-        _;
-    }
-
     modifier onlyManagerOrRecipient() {
-        require(msg.sender == manager || msg.sender == recipient);
+        require(_isManagerOrRecipient(), INVALID_CALLER);
         _;
     }   
 
     modifier canWithdraw() { 
-        require(recipient != address(0));
-
-        // if we have a reviewer, make sure the milestone is COMPLETED
-        if (reviewer != address(0)) {
-            // check reviewTimeout if not already COMPLETED
-            if (state != MilestoneState.COMPLETED && reviewTimeout > 0 && now >= reviewTimeout) {
-                state = MilestoneState.COMPLETED;
-            }
-            require(state == MilestoneState.COMPLETED);
-        }
-
-        _; 
-    }
-
-    modifier hasReviewer() {
-        require(reviewer != address(0));
+        require(recipient != address(0), INVALID_ADDRESS);
+        require(_isValidWithdrawState(), INVALID_STATE);
         _;
     }
-    
+
     //== constructor
 
     // @notice we pass in the idProject here because it was throwing stack too deep error
     function initialize(
+        string _name,
+        string _url,
+        uint64 _parentProject,
         address _reviewer,
         address _recipient,
         address _manager,
         uint _reviewTimeoutSeconds,
         address _acceptedToken,
+        uint _maxAmount,
         // if these params are at the beginning, we get a stack too deep error
-        address _liquidPledging,
-        uint64 _idProject
+        address _liquidPledging
     ) onlyInit external
     {
-        require(_manager != address(0));
-        // TODO fetch this from the kernel?
-        require(_liquidPledging != address(0));
-        initialized();
+        super.initialize(_name, _url, _parentProject, _reviewer, _manager, _reviewTimeoutSeconds, _acceptedToken, _liquidPledging);
 
-        idProject = _idProject;
-        liquidPledging = LiquidPledging(_liquidPledging);
+        if (_maxAmount > 0) {
+            CappedMilestone._initialize(_acceptedToken, _maxAmount);
+        }
 
-        ( , address addr, , , , , , address plugin) = liquidPledging.getPledgeAdmin(idProject);
-        require(addr == address(this) && plugin == address(this));
-
-        reviewer = _reviewer;        
         recipient = _recipient;
-        manager = _manager;        
-        reviewTimeoutSeconds = _reviewTimeoutSeconds;
-        acceptedToken = _acceptedToken;
     }
-
-    //== external
-
-    function isCanceled() public constant returns (bool) {
-        return liquidPledging.isProjectCanceled(idProject);
-    }
-
-    // @notice Milestone manager can request to mark a milestone as completed
-    // When he does, the timeout is initiated. So if the reviewer doesn't
-    // handle the request in time, the recipient can withdraw the funds
-    function requestReview() hasReviewer onlyManagerOrRecipient external {
-        require(!isCanceled());
-        require(state == MilestoneState.ACTIVE);
-
-        // start the review timeout
-        reviewTimeout = now + reviewTimeoutSeconds;    
-        state = MilestoneState.NEEDS_REVIEW;
-
-        RequestReview(liquidPledging, idProject);        
-    }
-
-    // @notice The reviewer can reject a completion request from the milestone manager
-    // When he does, the timeout is reset.
-    function rejectCompleted() onlyReviewer external {
-        require(!isCanceled());
-
-        // reset 
-        reviewTimeout = 0;
-        state = MilestoneState.ACTIVE;
-
-        RejectCompleted(liquidPledging, idProject);
-    }   
-
-    // @notice The reviewer can approve a completion request from the milestone manager
-    // When he does, the milestone's state is set to completed and the funds can be
-    // withdrawn by the recipient.
-    function approveCompleted() onlyReviewer external {
-        require(!isCanceled());
-
-        state = MilestoneState.COMPLETED;
-
-        ApproveCompleted(liquidPledging, idProject);         
-    }
-
-    // @notice The reviewer and the milestone manager can cancel a milestone.
-    function cancelMilestone() external {
-        require(msg.sender == manager || msg.sender == reviewer);
-        // prevent canceling if the milestone is completed
-        require(state != MilestoneState.COMPLETED);
-
-        liquidPledging.cancelProject(idProject);
-    }    
-
-    // @notice Only the current reviewer can change the reviewer.
-    function changeReviewer(address newReviewer) onlyReviewer external {
-        reviewer = newReviewer;
-
-        ReviewerChanged(liquidPledging, idProject, newReviewer);
-    }    
 
     // @notice  If the recipient has not been set, only the manager can set the recipient
     //          otherwise, only the current recipient or reviewer can change the recipient
     function changeRecipient(address newRecipient) external {
         if (recipient == address(0)) {
-            require(msg.sender == manager);
+            require(msg.sender == manager, INVALID_CALLER);
         } else {
-            require(msg.sender == recipient || msg.sender == reviewer);
+            require(msg.sender == recipient, INVALID_CALLER);
         }
-        newRecipient = _newRecipient;
+        recipient = newRecipient;
 
-        RecipientChanged(liquidPledging, idProject, newRecipient);                 
-    }
-
-    /// @dev this is called by liquidPledging before every transfer to and from
-    ///      a pledgeAdmin that has this contract as its plugin
-    /// @dev see ILiquidPledgingPlugin interface for details about context param
-    function beforeTransfer(
-        uint64 pledgeManager,
-        uint64 pledgeFrom,
-        uint64 pledgeTo,
-        uint64 context,
-        address token,
-        uint amount
-    ) 
-      isInitialized
-      external 
-      returns (uint maxAllowed)
-    {
-        require(msg.sender == address(liquidPledging));
-        
-        // token check
-        if (acceptedToken != ANY_TOKEN && token != acceptedToken) {
-            return 0;
-        }
-
-        return amount;
+        emit RecipientChanged(liquidPledging, idProject, newRecipient);                 
     }
 
     /// @dev this is called by liquidPledging after every transfer to and from
@@ -245,15 +107,12 @@ contract BridgedMilestone is AragonApp {
       isInitialized
       external
     {
-        require(msg.sender == address(liquidPledging));
+        require(msg.sender == address(liquidPledging), INVALID_CALLER);
 
-        var (, fromOwner, , , , , ,) = liquidPledging.getPledge(pledgeFrom);
-        var (, toOwner, , , , , , ) = liquidPledging.getPledge(pledgeTo);
+        (, uint64 fromOwner, , , , , ,) = liquidPledging.getPledge(pledgeFrom);
+        (, uint64 toOwner, , , , , , ) = liquidPledging.getPledge(pledgeTo);
 
-        // If fromOwner != toOwner, the means that a pledge is being committed to milestone.
-        if (context == TO_OWNER && fromOwner != toOwner) {
-            received[token] += amount;
-        }
+        _returnExcessFunds(context, pledgeTo, amount, fromOwner, toOwner);
     }
 
     // @notice Allows the recipient or manager to initiate withdraw from
@@ -265,9 +124,11 @@ contract BridgedMilestone is AragonApp {
     //  which the amounts are associated; these are extrapolated using the D64
     //  bitmask
     // @param tokens An array of token addresses the the pledges represent
-    function mWithdraw(uint[] pledgesAmounts, address[] tokens) onlyManagerOrRecipient canWithdraw external {
+    function mWithdraw(uint[] pledgesAmounts, address[] tokens, bool autoDisburse) onlyManagerOrRecipient canWithdraw external {
         liquidPledging.mWithdraw(pledgesAmounts);
-        _disburseTokens(tokens);
+        if (autoDisburse) {
+            _mDisburse(tokens);
+        }
     }
 
     // @notice Allows the recipient or manager to initiate withdraw of a single pledge, from
@@ -308,14 +169,14 @@ contract BridgedMilestone is AragonApp {
     }
 
     function _disburse(address token) internal {
-        address[] tokens = new address[](1);
+        address[] memory tokens = new address[](1);
         tokens[0] = token;
         _mDisburse(tokens);
     }
 
     function _mDisburse(address[] tokens) internal {
-        IKernel kernel = liquidPledging.kernel();
-        IForeignGivethBridge bridge = IForeignGivethBridge(kernel.getApp(FOREIGN_BRIDGE_INSTANCE));
+        IKernelEnhanced kernel = IKernelEnhanced(liquidPledging.kernel());
+        IForeignGivethBridge bridge = IForeignGivethBridge(kernel.getApp(kernel.APP_ADDR_NAMESPACE(), FOREIGN_BRIDGE_APP_ID));
 
         uint amount;
         address token;
@@ -324,7 +185,7 @@ contract BridgedMilestone is AragonApp {
             token = tokens[i];
 
             if (token == address(0)) {
-                amount = address(this).balance();
+                amount = address(this).balance;
             } else {
                 ERC20 milestoneToken = ERC20(acceptedToken);
                 amount = milestoneToken.balanceOf(this);
@@ -332,8 +193,16 @@ contract BridgedMilestone is AragonApp {
 
             if (amount > 0) {
                 bridge.withdraw(recipient, acceptedToken, amount);
-                PaymentCollected(liquidPledging, idProject);            
+                emit PaymentCollected(liquidPledging, idProject);            
             }
         }
+    }
+
+    function _canRequestReview() internal view returns(bool) {
+        return _isManagerOrRecipient();
+    }
+
+    function _isManagerOrRecipient() internal view returns(bool) {
+        return msg.sender == manager || msg.sender == recipient;
     }
 }

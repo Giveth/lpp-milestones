@@ -1,0 +1,218 @@
+pragma solidity ^0.4.24;
+
+/*
+    Copyright 2019 RJ Ewing <perissology@protonmail.com>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+import "giveth-liquidpledging/contracts/LiquidPledging.sol";
+import "@aragon/os/contracts/apps/AragonApp.sol";
+
+
+/// @title BrigedMilestone
+/// @author RJ Ewing<perissology@protonmail.com>
+/// @notice The BridgedMilestone contract is a plugin contract for liquidPledging,
+///  extending the functionality of a liquidPledging project. This contract
+///  prevents withdrawals from any pledges this contract is the owner of.
+///  This contract has 4 roles. The admin, a reviewer, and a recipient role. 
+///
+///  1. The admin can cancel the milestone, update the conditions the milestone accepts transfers
+///  and send a tx as the milestone. 
+///  2. The reviewer can cancel the milestone. 
+///  3. The recipient role will receive the pledge's owned by this milestone. 
+
+contract Milestone is AragonApp {
+    uint internal constant TO_OWNER = 256;
+    uint internal constant TO_INTENDEDPROJECT = 511;
+
+    string internal constant INVALID_CALLER = "Milestone_INVALID_CALLER";
+    string internal constant INVALID_STATE = "Milestone_INVALID_STATE";
+    string internal constant INVALID_ADDRESS = "Milestone_INVALID_ADDRESS";
+    string internal constant MISSING_REVIEWER = "Milestone_MISSING_REVIEWER";
+
+    address public constant ANY_TOKEN = address(-1);
+
+    enum MilestoneState { ACTIVE, NEEDS_REVIEW, COMPLETED }
+
+    LiquidPledging public liquidPledging;
+    uint64 public idProject;
+
+    address public reviewer;
+    address public manager;
+
+    address public acceptedToken;
+    MilestoneState public state = MilestoneState.ACTIVE;
+
+    mapping (address => uint256) public received;
+
+    // @notice After marking complete, and after this timeout, the recipient can withdraw the money
+    // even if the milestone was not marked as complete by the reviewer.
+    uint public reviewTimeoutSeconds;
+    uint public reviewTimeout;
+
+    event RequestReview(address indexed liquidPledging, uint64 indexed idProject);
+    event RejectCompleted(address indexed liquidPledging, uint64 indexed idProject);
+    event ApproveCompleted(address indexed liquidPledging, uint64 indexed idProject);
+    event ReviewerChanged(address indexed liquidPledging, uint64 indexed idProject, address reviewer);
+
+
+    modifier onlyReviewer() {
+        require(msg.sender == reviewer, INVALID_CALLER);
+        _;
+    }
+
+    modifier hasReviewer() {
+        require(reviewer != address(0), MISSING_REVIEWER);
+        _;
+    }
+    
+    //== constructor
+
+    // @notice we pass in the idProject here because it was throwing stack too deep error
+    function initialize(
+        string _name,
+        string _url,
+        uint64 _parentProject,
+        address _reviewer,
+        address _manager,
+        uint _reviewTimeoutSeconds,
+        address _acceptedToken,
+        // if these params are at the beginning, we get a stack too deep error
+        address _liquidPledging
+    ) internal 
+    {
+        require(_manager != address(0), INVALID_ADDRESS);
+        // TODO fetch this from the kernel?
+        require(_liquidPledging != address(0), INVALID_ADDRESS);
+        initialized();
+
+        liquidPledging = LiquidPledging(_liquidPledging);
+        idProject = liquidPledging.addProject(
+            _name,
+            _url,
+            address(this),
+            _parentProject,
+            0,
+            ILiquidPledgingPlugin(this)
+        ); 
+
+        ( , address addr, , , , , , address plugin) = liquidPledging.getPledgeAdmin(idProject);
+        require(addr == address(this) && plugin == address(this), INVALID_ADDRESS);
+
+        reviewer = _reviewer;        
+        manager = _manager;        
+        reviewTimeoutSeconds = _reviewTimeoutSeconds;
+        acceptedToken = _acceptedToken;
+    }
+
+    //== external
+
+    function isCanceled() public constant returns (bool) {
+        return liquidPledging.isProjectCanceled(idProject);
+    }
+
+    // @notice Milestone manager can request to mark a milestone as completed
+    // When he does, the timeout is initiated. So if the reviewer doesn't
+    // handle the request in time, the recipient can withdraw the funds
+    function requestReview() hasReviewer external {
+        require(_canRequestReview());
+        require(!isCanceled());
+        require(state == MilestoneState.ACTIVE, INVALID_STATE);
+
+        // start the review timeout
+        reviewTimeout = now + reviewTimeoutSeconds;    
+        state = MilestoneState.NEEDS_REVIEW;
+
+        emit RequestReview(liquidPledging, idProject);        
+    }
+
+    // @notice The reviewer can reject a completion request from the milestone manager
+    // When he does, the timeout is reset.
+    function rejectCompleted() onlyReviewer external {
+        require(!isCanceled());
+
+        // reset 
+        reviewTimeout = 0;
+        state = MilestoneState.ACTIVE;
+
+        emit RejectCompleted(liquidPledging, idProject);
+    }   
+
+    // @notice The reviewer can approve a completion request from the milestone manager
+    // When he does, the milestone's state is set to completed and the funds can be
+    // withdrawn by the recipient.
+    function approveCompleted() onlyReviewer external {
+        require(!isCanceled());
+
+        state = MilestoneState.COMPLETED;
+
+        emit ApproveCompleted(liquidPledging, idProject);         
+    }
+
+    // @notice The reviewer and the milestone manager can cancel a milestone.
+    function cancelMilestone() external {
+        require(msg.sender == manager || msg.sender == reviewer);
+        // prevent canceling if the milestone is completed
+        require(state != MilestoneState.COMPLETED);
+
+        liquidPledging.cancelProject(idProject);
+    }    
+
+    // @notice Only the current reviewer can change the reviewer.
+    function changeReviewer(address newReviewer) onlyReviewer external {
+        reviewer = newReviewer;
+
+        emit ReviewerChanged(liquidPledging, idProject, newReviewer);
+    }    
+
+    /// @dev this is called by liquidPledging before every transfer to and from
+    ///      a pledgeAdmin that has this contract as its plugin
+    /// @dev see ILiquidPledgingPlugin interface for details about context param
+    function beforeTransfer(
+        uint64 pledgeManager,
+        uint64 pledgeFrom,
+        uint64 pledgeTo,
+        uint64 context,
+        address token,
+        uint amount
+    ) 
+      isInitialized
+      external 
+      returns (uint maxAllowed)
+    {
+        require(msg.sender == address(liquidPledging), INVALID_CALLER);
+        
+        // token check
+        if (acceptedToken != ANY_TOKEN && token != acceptedToken) {
+            return 0;
+        }
+
+        return amount;
+    }
+
+    function _isValidWithdrawState() internal returns(bool) {
+        if (reviewer == address(0)) {
+            return true;
+        }
+
+        // check reviewTimeout if not already COMPLETED
+        if (state != MilestoneState.COMPLETED && reviewTimeout > 0 && now >= reviewTimeout) {
+            state = MilestoneState.COMPLETED;
+        }
+        return state == MilestoneState.COMPLETED;
+    }
+
+    function _canRequestReview() internal view returns(bool);
+}
