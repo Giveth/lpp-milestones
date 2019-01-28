@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.18;
 
 /*
     Copyright 2019 RJ Ewing <perissology@protonmail.com>
@@ -34,9 +34,6 @@ import "./Milestone.sol";
 
 contract CappedMilestone is Milestone {
 
-    string private constant INVALID_TOKEN = "CappedMilestone_INVALID_TOKEN";
-    string private constant INVALID_AMOUNT = "CappedMilestone_INVALID_AMOUNT";
-
     uint public maxAmount;
     uint public received;
 
@@ -45,8 +42,8 @@ contract CappedMilestone is Milestone {
     }
 
     function _initialize(address _acceptedToken, uint _maxAmount) internal {
-        require(_acceptedToken != ANY_TOKEN, INVALID_TOKEN);
-        require(_maxAmount > 0, INVALID_AMOUNT);
+        require(_acceptedToken != ANY_TOKEN);
+        require(_maxAmount > 0);
         maxAmount = _maxAmount;
 
     }
@@ -62,29 +59,33 @@ contract CappedMilestone is Milestone {
     */
     function _returnExcessFunds(
         uint64 context,
+        uint64 pledgeFrom,
         uint64 pledgeTo,
-        uint256  amount,
-        uint64 fromOwner,
-        uint64 toOwner
+        uint256 amount
     ) internal 
     {
         // If fromOwner != toOwner, the means that a pledge is being committed to
         // milestone. We will accept any amount up to m.maxAmount, and return
         // the rest
-        if (isCapped() && context == TO_OWNER && fromOwner != toOwner) {
-            uint returnFunds = 0;
-            uint newBalance = received + amount;
+        if (isCapped() && context == TO_OWNER) {
+            var (, fromOwner, , , , , ,) = liquidPledging.getPledge(pledgeFrom);
+            var (, toOwner, , , , , , ) = liquidPledging.getPledge(pledgeTo);
 
-            if (newBalance > maxAmount) {
-                returnFunds = newBalance - maxAmount;
-                received = maxAmount;
-            } else {
-                received = received + amount;
-            }
+            if (fromOwner != toOwner) {
+                uint returnFunds = 0;
+                uint newBalance = received + amount;
 
-            // send any exceeding funds back
-            if (returnFunds > 0) {
-                liquidPledging.cancelPledge(pledgeTo, returnFunds);
+                if (newBalance > maxAmount) {
+                    returnFunds = newBalance - maxAmount;
+                    received = maxAmount;
+                } else {
+                    received = received + amount;
+                }
+
+                // send any exceeding funds back
+                if (returnFunds > 0) {
+                    liquidPledging.cancelPledge(pledgeTo, returnFunds);
+                }
             }
         }
     }

@@ -1,20 +1,24 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.18;
 
 import "./BridgedMilestone.sol";
+import "./LPMilestone.sol";
 import "@aragon/os/contracts/common/VaultRecoverable.sol";
+import "@aragon/os/contracts/kernel/Kernel.sol";
 import "giveth-liquidpledging/contracts/LiquidPledging.sol";
 import "giveth-liquidpledging/contracts/LPConstants.sol";
-import "giveth-liquidpledging/contracts/lib/aragon/IKernelEnhanced.sol";
 
 contract MilestoneFactory is LPConstants, VaultRecoverable {
-    IKernelEnhanced public kernel;
+    Kernel public kernel;
 
-    // bytes32 constant public BRIDGED_MILESTONE_APP_ID = keccak256("bridged-milestone");
-    bytes32 constant public BRIDGED_MILESTONE_APP_ID = 0xa6bf814a69e10e309a1f9c26479f60fe6e6b27ffb1ce16ab23737eae07075436;
+    bytes32 constant public BRIDGED_MILESTONE_APP_ID = keccak256("lpp-bridged-milestone");
+    bytes32 constant public BRIDGED_MILESTONE_APP = keccak256(APP_BASES_NAMESPACE, BRIDGED_MILESTONE_APP_ID);
+    bytes32 constant public LP_MILESTONE_APP_ID = keccak256("lpp-lp-milestone");
+    bytes32 constant public LP_MILESTONE_APP = keccak256(APP_BASES_NAMESPACE, LP_MILESTONE_APP_ID);
+    bytes32 constant public LP_APP_INSTANCE = keccak256(APP_ADDR_NAMESPACE, LP_APP_ID);
 
     event DeployBridgedMilestone(address milestone);
 
-    constructor(IKernelEnhanced _kernel) public {
+    function MilestoneFactory(Kernel _kernel) public {
         // Note: This contract will need CREATE_PERMISSIONS_ROLE on the ACL,
         // the PLUGIN_MANAGER_ROLE on liquidPledging, 
         // and the APP_MANAGER_ROLE (KERNEL_APP_BASES_NAMESPACE, CAMPAIGN_APP_ID) on the Kernel.
@@ -36,9 +40,9 @@ contract MilestoneFactory is LPConstants, VaultRecoverable {
         uint _reviewTimeoutSeconds
     ) public
     {
-        address milestoneBase = kernel.getApp(kernel.APP_BASES_NAMESPACE(), BRIDGED_MILESTONE_APP_ID);
+        address milestoneBase = kernel.getApp(BRIDGED_MILESTONE_APP);
         require(milestoneBase != 0);
-        LiquidPledging liquidPledging = LiquidPledging(kernel.getApp(kernel.APP_ADDR_NAMESPACE(), LP_APP_ID));
+        LiquidPledging liquidPledging = LiquidPledging(kernel.getApp(LP_APP_INSTANCE));
         require(address(liquidPledging) != 0);
 
         BridgedMilestone milestone = BridgedMilestone(kernel.newAppInstance(BRIDGED_MILESTONE_APP_ID, milestoneBase));
@@ -57,7 +61,7 @@ contract MilestoneFactory is LPConstants, VaultRecoverable {
             liquidPledging
         );
 
-        emit DeployBridgedMilestone(address(milestone));
+        DeployBridgedMilestone(address(milestone));
     }
 
     function getRecoveryVault() public view returns (address) {

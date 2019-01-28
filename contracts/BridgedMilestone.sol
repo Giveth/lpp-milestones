@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.18;
 
 /*
     Copyright 2019 RJ Ewing <perissology@protonmail.com>
@@ -18,8 +18,8 @@ pragma solidity ^0.4.24;
 */
 
 import "./CappedMilestone.sol";
-import "giveth-liquidpledging/contracts/lib/aragon/IKernelEnhanced.sol";
 import "giveth-bridge/contracts/IForeignGivethBridge.sol";
+import "@aragon/os/contracts/kernel/Kernel.sol";
 
 /// @title BrigedMilestone
 /// @author RJ Ewing<perissology@protonmail.com>
@@ -35,8 +35,8 @@ import "giveth-bridge/contracts/IForeignGivethBridge.sol";
 
 contract BridgedMilestone is CappedMilestone {
 
-    // keccak256("ForeignGivethBridge")
-    bytes32 constant public FOREIGN_BRIDGE_APP_ID = 0x304d2fc3aa031b861c3906c5d3f8d5c80d2e6adb979d9cc223a6a3f445cb7e1d;
+    // keccack256(Kernel.APP_ADDR_NAMESPACE(), keccack256("ForeignGivethBridge"))
+    bytes32 constant public FOREIGN_BRIDGE_INSTANCE = 0xa46b3f7f301ac0173ef5564df485fccae3b60583ddb12c767fea607ff6971d0b;
 
     address public recipient;
 
@@ -44,13 +44,13 @@ contract BridgedMilestone is CappedMilestone {
     event PaymentCollected(address indexed liquidPledging, uint64 indexed idProject);
 
     modifier onlyManagerOrRecipient() {
-        require(_isManagerOrRecipient(), INVALID_CALLER);
+        require(_isManagerOrRecipient());
         _;
     }   
 
     modifier canWithdraw() { 
-        require(recipient != address(0), INVALID_ADDRESS);
-        require(_isValidWithdrawState(), INVALID_STATE);
+        require(recipient != address(0));
+        require(_isValidWithdrawState());
         _;
     }
 
@@ -84,13 +84,13 @@ contract BridgedMilestone is CappedMilestone {
     //          otherwise, only the current recipient or reviewer can change the recipient
     function changeRecipient(address newRecipient) external {
         if (recipient == address(0)) {
-            require(msg.sender == manager, INVALID_CALLER);
+            require(msg.sender == manager);
         } else {
-            require(msg.sender == recipient, INVALID_CALLER);
+            require(msg.sender == recipient);
         }
         recipient = newRecipient;
 
-        emit RecipientChanged(liquidPledging, idProject, newRecipient);                 
+        RecipientChanged(liquidPledging, idProject, newRecipient);                 
     }
 
     /// @dev this is called by liquidPledging after every transfer to and from
@@ -107,12 +107,9 @@ contract BridgedMilestone is CappedMilestone {
       isInitialized
       external
     {
-        require(msg.sender == address(liquidPledging), INVALID_CALLER);
+        require(msg.sender == address(liquidPledging));
 
-        (, uint64 fromOwner, , , , , ,) = liquidPledging.getPledge(pledgeFrom);
-        (, uint64 toOwner, , , , , , ) = liquidPledging.getPledge(pledgeTo);
-
-        _returnExcessFunds(context, pledgeTo, amount, fromOwner, toOwner);
+        _returnExcessFunds(context, pledgeFrom, pledgeTo, amount);
     }
 
     // @notice Allows the recipient or manager to initiate withdraw from
@@ -175,8 +172,8 @@ contract BridgedMilestone is CappedMilestone {
     }
 
     function _mDisburse(address[] tokens) internal {
-        IKernelEnhanced kernel = IKernelEnhanced(liquidPledging.kernel());
-        IForeignGivethBridge bridge = IForeignGivethBridge(kernel.getApp(kernel.APP_ADDR_NAMESPACE(), FOREIGN_BRIDGE_APP_ID));
+        Kernel kernel = Kernel(liquidPledging.kernel());
+        IForeignGivethBridge bridge = IForeignGivethBridge(kernel.getApp(FOREIGN_BRIDGE_INSTANCE));
 
         uint amount;
         address token;
@@ -193,7 +190,7 @@ contract BridgedMilestone is CappedMilestone {
 
             if (amount > 0) {
                 bridge.withdraw(recipient, acceptedToken, amount);
-                emit PaymentCollected(liquidPledging, idProject);            
+                PaymentCollected(liquidPledging, idProject);            
             }
         }
     }

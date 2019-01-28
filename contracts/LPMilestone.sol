@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.18;
 
 /*
     Copyright 2019 RJ Ewing <perissology@protonmail.com>
@@ -33,12 +33,10 @@ import "./CappedMilestone.sol";
 
 contract LPMilestone is CappedMilestone {
 
-    string private constant PROJECT_CANCELED = "LPMilestone_PROJECT_CANCELED";
-
     uint64 public recipient;
 
     modifier onlyManager() {
-        require(_isManager(), INVALID_CALLER);
+        require(_isManager());
         _;
     }
 
@@ -67,7 +65,7 @@ contract LPMilestone is CappedMilestone {
         }
 
         recipient = _recipient;
-        require(_recipientNotCanceled(), PROJECT_CANCELED);
+        require(_recipientNotCanceled());
     }
 
     /// @dev this is called by liquidPledging after every transfer to and from
@@ -84,17 +82,14 @@ contract LPMilestone is CappedMilestone {
       isInitialized
       external
     {
-        require(msg.sender == address(liquidPledging), INVALID_CALLER);
+        require(msg.sender == address(liquidPledging));
 
-        (, uint64 fromOwner, , , , , ,) = liquidPledging.getPledge(pledgeFrom);
-        (, uint64 toOwner, , , , , , ) = liquidPledging.getPledge(pledgeTo);
-
-        _returnExcessFunds(context, pledgeTo, amount, fromOwner, toOwner);
+        _returnExcessFunds(context, pledgeFrom, pledgeTo, amount);
     }
 
     function transfer(uint64 idPledge, uint amount) onlyManager external {
-        require(_isValidWithdrawState(), INVALID_STATE);
-        require(_recipientNotCanceled(), PROJECT_CANCELED);
+        require(_isValidWithdrawState());
+        require(_recipientNotCanceled());
 
         liquidPledging.transfer(
 		        idProject,
@@ -105,8 +100,8 @@ contract LPMilestone is CappedMilestone {
     }
 
     function mTransfer(uint[] pledgesAmounts) onlyManager external {
-        require(_isValidWithdrawState(), INVALID_STATE);
-        require(_recipientNotCanceled(), PROJECT_CANCELED);
+        require(_isValidWithdrawState());
+        require(_recipientNotCanceled());
 
         liquidPledging.mTransfer(
             idProject,
@@ -117,7 +112,7 @@ contract LPMilestone is CappedMilestone {
 
     function _recipientNotCanceled() internal view returns(bool) {
         // note: this will throw if idProject doesn't exist
-        ( LiquidPledgingStorage.PledgeAdminType adminType, , , , , , , ) = liquidPledging.getPledgeAdmin(recipient);
+        var ( adminType, , , , , , , ) = liquidPledging.getPledgeAdmin(recipient);
         if (adminType == LiquidPledgingStorage.PledgeAdminType.Project) {
             return !liquidPledging.isProjectCanceled(recipient);
         }

@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.18;
 
 /*
     Copyright 2019 RJ Ewing <perissology@protonmail.com>
@@ -37,11 +37,6 @@ contract Milestone is AragonApp {
     uint internal constant TO_OWNER = 256;
     uint internal constant TO_INTENDEDPROJECT = 511;
 
-    string internal constant INVALID_CALLER = "Milestone_INVALID_CALLER";
-    string internal constant INVALID_STATE = "Milestone_INVALID_STATE";
-    string internal constant INVALID_ADDRESS = "Milestone_INVALID_ADDRESS";
-    string internal constant MISSING_REVIEWER = "Milestone_MISSING_REVIEWER";
-
     address public constant ANY_TOKEN = address(-1);
 
     enum MilestoneState { ACTIVE, NEEDS_REVIEW, COMPLETED }
@@ -69,12 +64,12 @@ contract Milestone is AragonApp {
 
 
     modifier onlyReviewer() {
-        require(msg.sender == reviewer, INVALID_CALLER);
+        require(msg.sender == reviewer);
         _;
     }
 
     modifier hasReviewer() {
-        require(reviewer != address(0), MISSING_REVIEWER);
+        require(reviewer != address(0));
         _;
     }
     
@@ -93,9 +88,8 @@ contract Milestone is AragonApp {
         address _liquidPledging
     ) internal 
     {
-        require(_manager != address(0), INVALID_ADDRESS);
-        // TODO fetch this from the kernel?
-        require(_liquidPledging != address(0), INVALID_ADDRESS);
+        require(_manager != address(0));
+        require(_liquidPledging != address(0));
         initialized();
 
         liquidPledging = LiquidPledging(_liquidPledging);
@@ -108,8 +102,8 @@ contract Milestone is AragonApp {
             ILiquidPledgingPlugin(this)
         ); 
 
-        ( , address addr, , , , , , address plugin) = liquidPledging.getPledgeAdmin(idProject);
-        require(addr == address(this) && plugin == address(this), INVALID_ADDRESS);
+        var ( , addr, , , , , , plugin) = liquidPledging.getPledgeAdmin(idProject);
+        require(addr == address(this) && plugin == address(this));
 
         reviewer = _reviewer;        
         manager = _manager;        
@@ -129,13 +123,13 @@ contract Milestone is AragonApp {
     function requestReview() hasReviewer external {
         require(_canRequestReview());
         require(!isCanceled());
-        require(state == MilestoneState.ACTIVE, INVALID_STATE);
+        require(state == MilestoneState.ACTIVE);
 
         // start the review timeout
         reviewTimeout = now + reviewTimeoutSeconds;    
         state = MilestoneState.NEEDS_REVIEW;
 
-        emit RequestReview(liquidPledging, idProject);        
+        RequestReview(liquidPledging, idProject);        
     }
 
     // @notice The reviewer can reject a completion request from the milestone manager
@@ -147,7 +141,7 @@ contract Milestone is AragonApp {
         reviewTimeout = 0;
         state = MilestoneState.ACTIVE;
 
-        emit RejectCompleted(liquidPledging, idProject);
+        RejectCompleted(liquidPledging, idProject);
     }   
 
     // @notice The reviewer can approve a completion request from the milestone manager
@@ -158,7 +152,7 @@ contract Milestone is AragonApp {
 
         state = MilestoneState.COMPLETED;
 
-        emit ApproveCompleted(liquidPledging, idProject);         
+        ApproveCompleted(liquidPledging, idProject);         
     }
 
     // @notice The reviewer and the milestone manager can cancel a milestone.
@@ -174,7 +168,7 @@ contract Milestone is AragonApp {
     function changeReviewer(address newReviewer) onlyReviewer external {
         reviewer = newReviewer;
 
-        emit ReviewerChanged(liquidPledging, idProject, newReviewer);
+        ReviewerChanged(liquidPledging, idProject, newReviewer);
     }    
 
     /// @dev this is called by liquidPledging before every transfer to and from
@@ -192,7 +186,7 @@ contract Milestone is AragonApp {
       external 
       returns (uint maxAllowed)
     {
-        require(msg.sender == address(liquidPledging), INVALID_CALLER);
+        require(msg.sender == address(liquidPledging));
         
         // token check
         if (acceptedToken != ANY_TOKEN && token != acceptedToken) {

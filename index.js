@@ -1,14 +1,14 @@
 const generateClass = require('eth-contract-class').default;
 
-const factoryArtifact = require('./dist/contracts/LPPMilestoneFactory.json');
-const bridgedMilestoneArtifact = require('./dist/contracts/BridgedMilestone.json');
-const lpMilestoneArtifact = require('./dist/contracts/LPMilestone.json');
+const factoryArtifact = require('./build/LPPMilestoneFactory.json');
+const bridgedMilestoneArtifact = require('./build/BridgedMilestone.json');
+const lpMilestoneArtifact = require('./build/LPMilestone.json');
 
 module.exports = {
-  LPMilestone: generateClass(lpMilestoneArtifact.abiDefinition, lpMilestoneArtifact.code),
+  LPMilestone: generateClass(lpMilestoneArtifact.compilerOutput.abi, lpMilestoneArtifact.compilerOutput.evm.bytecode.object),
   BridgedMilestone: generateClass(
-    bridgedMilestoneArtifact.abiDefinition,
-    bridgedMilestoneArtifact.code,
+    bridgedMilestoneArtifact.compilerOutput.abi,
+    bridgedMilestoneArtifact.compilerOutput.evm.bytecode.object,
   ),
-  MilestoneFactory: generateClass(factoryArtifact.abiDefinition, factoryArtifact.code),
+  MilestoneFactory: generateClass(factoryArtifact.compilerOutput.abi, factoryArtifact.compilerOutput.evm.bytecode.object),
 };
