@@ -8,24 +8,24 @@ Welcome to the code for the milestone plugins for [liquid pledging](https://gith
 
 - [Table of contents](#table-of-contents)
 - [Milestone Contracts](#milestone-contracts)
-    - [BridgedMilestone](#bridgedmilestone)
-        - [Recipient](#recipient)
-            - [Available Actions:](#available-actions)
-            - [Changing the recipient](#changing-the-recipient)
-        - [Manager](#manager)
-            - [Available Actions:](#available-actions-1)
-        - [Reviewer (optional)](#reviewer-optional)
-            - [Constraints imposed if set:](#constraints-imposed-if-set)
-            - [Available Actions:](#available-actions-2)
-            - [Changing the reviewer](#changing-the-reviewer)
-        - [Funding/Withdraw](#fundingwithdraw)
-    - [FundRaisingMilestone](#fundraisingmilestone)
-        - [Recipient](#recipient-1)
-        - [Withdraw/Disbursement](#withdrawdisbursement)
+  - [BridgedMilestone](#bridgedmilestone)
+    - [Recipient](#recipient)
+      - [Available Actions:](#available-actions)
+      - [Changing the recipient](#changing-the-recipient)
+    - [Manager](#manager)
+      - [Available Actions:](#available-actions-1)
+    - [Reviewer (optional)](#reviewer-optional)
+      - [Constraints imposed if set:](#constraints-imposed-if-set)
+      - [Available Actions:](#available-actions-2)
+      - [Changing the reviewer](#changing-the-reviewer)
+    - [Funding/Withdraw](#fundingwithdraw)
+  - [LPMilestone](#lpmilestone)
+    - [Recipient](#recipient-1)
+    - [Withdraw/Disbursement](#withdrawdisbursement)
 - [Development](#development)
-    - [Install](#install)
-    - [Requirements](#requirements)
-    - [Package](#package)
+  - [Install](#install)
+  - [Requirements](#requirements)
+  - [Package](#package)
 - [Run demo](#run-demo)
 - [Help](#help)
 
@@ -86,7 +86,6 @@ This entity is responsible for "managing" the milestone.
 
 * canceling the milestone
 * accept the milestone as completed
-* change/unset the recipient
 
 ##### Changing the reviewer
 
@@ -105,26 +104,19 @@ Depending on the behavior of the LiquidPledging app, withdraw may be a 2-step pr
 **note:** This milestone can continue to receive funds indefinetly.
 
 
-### FundRaisingMilestone
+### LPMilestone
 
-This milestone is intended to raise funds for an exsting LiquidPledging `admin`. Upon disbursement of funds, they will be sent directly to the [LiquidPledging](https://github.com/Giveth/liquidpledging) `admin`. 
+This milestone is intended to raise funds for an exsting LiquidPledging `admin`. Any raised funds can only be transferred transfered directly to the [LiquidPledging](https://github.com/Giveth/liquidpledging) `admin`. 
 
 All behavior is the same as the [BridgedMilestone](#bridgedmilestone) except as noted below.
 
 #### Recipient
 
-This is the `adminId` of the LiquidPledging `admin` who will receive the funds from this milestone. The `admin.addr` will be the entity that can execute the actions mentioned in [BridgedMilestone - Available Actions](#available-actions).
+This is the `adminId` of the LiquidPledging `admin` who will receive the funds from this milestone. Only the `manager` will be able to execute the actions mentioned in [BridgedMilestone - Available Actions](#available-actions).
 
 #### Withdraw/Disbursement
 
 As noted above, the funds will never leave the LiquidPledging contract.
-
-TODO:
-
-- should the funds be `transferred` to the admin? What happens if the receiving admin is canceled? Then the funds will be back in control of this milestone. Then either this milestone's reviewer will need to change the recipient, or this milestone will need to be canceled so the funds roll back up and are accessible.
-- the other option is to `donate` the funds to the recipient admin in the `manager`. This would put the funds in control of the manager if the recipeint admin was canceled. This could be problematic b/c the `manager` may be a contract that can't make arbitrary external calls (like a multisig) & doesn't know how to interact w/ liquidPledging to donate the funds, thus resulting in stuck funds.
-
-I think the first options is best.
 
 ## Development
 
