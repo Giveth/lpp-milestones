@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
 /*
-    Copyright 2019 RJ Ewing <perissology@protonmail.com>
+    Copyright 2019 RJ Ewing <rj@rjewing.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,17 +21,25 @@ import "./CappedMilestone.sol";
 import "giveth-bridge/contracts/IForeignGivethBridge.sol";
 import "@aragon/os/contracts/kernel/Kernel.sol";
 
-/// @title BrigedMilestone
-/// @author RJ Ewing<perissology@protonmail.com>
+/// @title BridgedMilestone
+/// @author RJ Ewing<rj@rjewing.com>
 /// @notice The BridgedMilestone contract is a plugin contract for liquidPledging,
 ///  extending the functionality of a liquidPledging project. This contract
-///  prevents withdrawals from any pledges this contract is the owner of.
-///  This contract has 4 roles. The admin, a reviewer, and a recipient role. 
-///
-///  1. The admin can cancel the milestone, update the conditions the milestone accepts transfers
-///  and send a tx as the milestone. 
-///  2. The reviewer can cancel the milestone. 
-///  3. The recipient role will receive the pledge's owned by this milestone. 
+///  provides the following functionality:
+///  
+///  1. If reviewer is set:
+///     1. Milestone must be in the Completed state to withdraw
+///  2. If maxAmount is set:
+///     1. Milestone will only accept funding upto the maxAmount
+///     2. Only a single token is acceppted
+///  3. Checks that the donation is an acceptedToken
+///     1. Can be set to ANY_TOKEN
+///     2. Or a single token
+///  4. Upon disbursement/withdrawal, the funds will be sent to the
+///     ForeignGivethBridge contract and withdrawn to the corresponding
+///     home network. Ending up in the recipient's account on the home
+///     network
+
 
 contract BridgedMilestone is CappedMilestone {
 
@@ -155,16 +163,6 @@ contract BridgedMilestone is CappedMilestone {
         _mDisburse(tokens);
     }
 
-    /**
-    * @dev By default, AragonApp will allow anyone to call transferToVault
-    *      We need to blacklist the `acceptedToken`
-    * @param token Token address that would be recovered
-    * @return bool whether the app allows the recovery
-    */
-    function allowRecoverability(address token) public view returns (bool) {
-        return acceptedToken != ANY_TOKEN && token != acceptedToken;
-    }
-
     function _disburse(address token) internal {
         address[] memory tokens = new address[](1);
         tokens[0] = token;
@@ -184,12 +182,12 @@ contract BridgedMilestone is CappedMilestone {
             if (token == address(0)) {
                 amount = address(this).balance;
             } else {
-                ERC20 milestoneToken = ERC20(acceptedToken);
+                ERC20 milestoneToken = ERC20(token);
                 amount = milestoneToken.balanceOf(this);
             }
 
             if (amount > 0) {
-                bridge.withdraw(recipient, acceptedToken, amount);
+                bridge.withdraw(recipient, token, amount);
                 PaymentCollected(liquidPledging, idProject);            
             }
         }

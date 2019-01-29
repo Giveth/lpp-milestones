@@ -1,6 +1,6 @@
 const generateClass = require('eth-contract-class').default;
 
-const factoryArtifact = require('./build/LPPMilestoneFactory.json');
+const factoryArtifact = require('./build/MilestoneFactory.json');
 const bridgedMilestoneArtifact = require('./build/BridgedMilestone.json');
 const lpMilestoneArtifact = require('./build/LPMilestone.json');
 

@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
 /*
-    Copyright 2019 RJ Ewing <perissology@protonmail.com>
+    Copyright 2019 RJ Ewing <rj@rjewing.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,16 +20,11 @@ pragma solidity ^0.4.18;
 import "./Milestone.sol";
 
 /// @title CappedMilestone
-/// @author RJ Ewing<perissology@protonmail.com>
-/// @notice The CappedMilestone contract is a plugin contract for liquidPledging,
-///  extending the functionality of a liquidPledging project. This contract
-///  prevents withdrawals from any pledges this contract is the owner of.
-///  This contract has 4 roles. The admin, a reviewer, and a recipient role. 
-///
-///  1. The admin can cancel the milestone, update the conditions the milestone accepts transfers
-///  and send a tx as the milestone. 
-///  2. The reviewer can cancel the milestone. 
-///  3. The recipient role will receive the pledge's owned by this milestone. 
+/// @author RJ Ewing<rj@rjewing.com>
+/// @notice The CappedMilestone contract is an abstract plugin contract for liquidPledging
+///  and is intended to be extended.
+///  This contract provides the functionality for capping the amount of funds a milestone
+///  can receive.
 
 
 contract CappedMilestone is Milestone {

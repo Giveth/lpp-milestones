@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
 /*
-    Copyright 2019 RJ Ewing <perissology@protonmail.com>
+    Copyright 2019 RJ Ewing <rj@rjewing.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,17 +18,26 @@ pragma solidity ^0.4.18;
 
 import "./CappedMilestone.sol";
 
-/// @title BrigedMilestone
-/// @author RJ Ewing<perissology@protonmail.com>
-/// @notice The BridgedMilestone contract is a plugin contract for liquidPledging,
+/// @title LPMilestone
+/// @author RJ Ewing<rj@rjewing.com>
+/// @notice The LPMilestone contract is a plugin contract for liquidPledging,
 ///  extending the functionality of a liquidPledging project. This contract
-///  prevents withdrawals from any pledges this contract is the owner of.
-///  This contract has 4 roles. The admin, a reviewer, and a recipient role. 
+///  provides the following functionality:
+///  
+///  1. If reviewer is set:
+///    1. Milestone must be in the Completed state to withdraw
+///  2. If maxAmount is set:
+///    1. Milestone will only accept funding upto the maxAmount
+///    2. Only a single token is acceppted
+///  3. Checks that the donation is an acceptedToken
+///    1. Can be set to ANY_TOKEN
+///    2. Or a single token
+///  4. The recipient of the milestone is a liquidPledging admin
 ///
-///  1. The admin can cancel the milestone, update the conditions the milestone accepts transfers
-///  and send a tx as the milestone. 
-///  2. The reviewer can cancel the milestone. 
-///  3. The recipient role will receive the pledge's owned by this milestone. 
+///  NOTE: If the recipient is canceled this milestone will not be withdrawalable
+///        and any withdrawn pledges may be under the control of this milestone again.
+///        This milestone must be canceled to roll-back any remaining pledges to the previous
+///        owner.
 
 
 contract LPMilestone is CappedMilestone {
@@ -54,8 +63,7 @@ contract LPMilestone is CappedMilestone {
         address _acceptedToken,
         uint _maxAmount,
         // if these params are at the beginning, we get a stack too deep error
-        address _liquidPledging,
-        uint64 _idProject
+        address _liquidPledging
     ) onlyInit external
     {
         super.initialize(_name, _url, _parentProject, _reviewer, _manager, _reviewTimeoutSeconds, _acceptedToken, _liquidPledging);
