@@ -54,7 +54,7 @@ The following rules apply:
 * If `recipient == address(0)`, only the `manager` can set the recipient
 * If `recipient != address(0)`, only the current `recipient` can change the recipient
 
-**note:** This is done is a single call, instead of a more fail-proof 2 step propose/accept process. If a mistake is made when setting/changing the recipient, the milestone will need to be canceled and re-created.
+**NOTE:** This is done is a single call, instead of a more fail-proof 2 step propose/accept process. If a mistake is made when setting/changing the recipient, the milestone will need to be canceled and re-created.
 
 #### Manager
 
@@ -69,7 +69,7 @@ This entity is responsible for "managing" the milestone.
 * if `reviewer != address(0)`:
     * request a review of the milestone
 
-**note:** This can be the `recipient`, the Giveth campaign manager, etc.
+**NOTE:** This can be the `recipient`, the Giveth campaign manager, etc.
 
 #### Reviewer (optional)
 
@@ -91,7 +91,7 @@ This entity is responsible for "managing" the milestone.
 
 In order to change the address, the current reviewer needs to call `changeReviewer(address newReviewer)`.
 
-**note:** This is done is a single call, instead of a more fail-proof 2 step propose/accept process. If a mistake is made when changing the reviewer, the milestone will need to be canceled and re-created.
+**NOTE:** This is done is a single call, instead of a more fail-proof 2 step propose/accept process. If a mistake is made when changing the reviewer, the milestone will need to be canceled and re-created.
 
 #### Funding/Withdraw
 
@@ -101,7 +101,7 @@ Donations can only be withdrawn if a `recipient` has been set.
 
 Depending on the behavior of the LiquidPledging app, withdraw may be a 2-step process. When calling `withdraw(uint64 idPledge, uint amount, address token)` or `mWithdraw(uint[] pledgesAmounts, address[] tokens)` an attempt will be made to disburse the payment to the recipient. If there is a delay between withdrawing from LiquidPledging and the funds being sent, then a 2nd call to `disburse(address token)` or `mDisburse(address[] tokens)` will need to be made to send the funds to the `recipient`.
 
-**note:** This milestone can continue to receive funds indefinetly.
+**NOTE:** This milestone can continue to receive funds indefinetly.
 
 
 ### LPMilestone
@@ -117,6 +117,8 @@ This is the `adminId` of the LiquidPledging `admin` who will receive the funds f
 #### Withdraw/Disbursement
 
 As noted above, the funds will never leave the LiquidPledging contract.
+
+**NOTE: If the recipient is canceled this milestone will not be withdrawable and any withdrawn pledges may be under the control of this milestone again. This milestone must be canceled to roll-back any remaining pledges to the previous owner.**
 
 ## Development
 

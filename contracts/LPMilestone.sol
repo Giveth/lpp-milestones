@@ -25,16 +25,16 @@ import "./CappedMilestone.sol";
 ///  provides the following functionality:
 ///  
 ///  1. If reviewer is set:
-///    1. Milestone must be in the Completed state to withdraw
+///     1. Milestone must be in the Completed state to withdraw
 ///  2. If maxAmount is set:
-///    1. Milestone will only accept funding upto the maxAmount
-///    2. Only a single token is acceppted
+///     1. Milestone will only accept funding upto the maxAmount
+///     2. Only a single token is acceppted
 ///  3. Checks that the donation is an acceptedToken
-///    1. Can be set to ANY_TOKEN
-///    2. Or a single token
+///     1. Can be set to ANY_TOKEN
+///     2. Or a single token
 ///  4. The recipient of the milestone is a liquidPledging admin
 ///
-///  NOTE: If the recipient is canceled this milestone will not be withdrawalable
+///  NOTE: If the recipient is canceled this milestone will not be withdrawable
 ///        and any withdrawn pledges may be under the control of this milestone again.
 ///        This milestone must be canceled to roll-back any remaining pledges to the previous
 ///        owner.
