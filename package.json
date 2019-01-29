@@ -1,6 +1,6 @@
 {
   "name": "lpp-milestones",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.0",
   "description": "LiquidPledging milestone contracts",
   "main": "index.js",
   "directories": {
@@ -9,7 +9,7 @@
   "scripts": {
     "test": "npm run compile && mocha --harmony",
     "compile": "solcpiler --solc-version v0.4.18+commit.9cf6e910",
-    "prepublish": "npm run build"
+    "prepublish": "npm run compile"
   },
   "repository": {
     "type": "git",
