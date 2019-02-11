@@ -1010,7 +1010,7 @@ describe('LPPMilestones', function() {
       );
 
       milestoneAdmin = await liquidPledging.getPledgeAdmin(10);
-      milestone = new LPMilestone(web3, milestoneAdmin.plugin);
+      milestone = new BridgedMilestone(web3, milestoneAdmin.plugin);
 
       // milestone manager can cancel
       await milestone.cancelMilestone({ from: milestoneManager1, $extraGas: 100000 });
@@ -1027,6 +1027,34 @@ describe('LPPMilestones', function() {
           gas: MAX_GAS,
         }),
       );
+    });
+
+    it('LPMilestone should be cancealable in COMPLETED state', async () => {
+      await factory.newLPMilestone(
+        'Cancelable LPMilestone',
+        '',
+        0,
+        reviewer1,
+        1, // delegate 1
+        milestoneManager1,
+        0,
+        giver1Token.$address,
+        reviewTimeoutSeconds,
+      );
+
+      milestoneAdmin = await liquidPledging.getPledgeAdmin(11);
+      milestone = new LPMilestone(web3, milestoneAdmin.plugin);
+
+      await milestone.requestReview({ from: milestoneManager1, $extraGas: 100000 });
+      await milestone.approveCompleted({ from: reviewer1, $extraGas: 100000 });
+
+      // milestone manager can cancel after completion
+      await milestone.cancelMilestone({ from: milestoneManager1, $extraGas: 100000 });
+
+      const canceled = await liquidPledging.isProjectCanceled(11, { $extraGas: 100000 });
+      const state = await milestone.state();
+      assert.equal(canceled, true);
+      assert.equal(state, '2'); // COMPLETED
     });
   });
 });

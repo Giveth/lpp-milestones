@@ -64,7 +64,6 @@ contract BridgedMilestone is CappedMilestone {
 
     //== constructor
 
-    // @notice we pass in the idProject here because it was throwing stack too deep error
     function initialize(
         string _name,
         string _url,
@@ -75,11 +74,14 @@ contract BridgedMilestone is CappedMilestone {
         uint _reviewTimeoutSeconds,
         address _acceptedToken,
         uint _maxAmount,
-        // if these params are at the beginning, we get a stack too deep error
         address _liquidPledging
     ) onlyInit external
     {
-        super.initialize(_name, _url, _parentProject, _reviewer, _manager, _reviewTimeoutSeconds, _acceptedToken, _liquidPledging);
+        super._initialize(_name, _url, _parentProject, _reviewer, _manager, _reviewTimeoutSeconds, _acceptedToken, _liquidPledging);
+
+        // Current bridge implementation doesn't handle native currencies
+        // This may change in the future
+        require(_acceptedToken != 0x0);
 
         if (_maxAmount > 0) {
             CappedMilestone._initialize(_acceptedToken, _maxAmount);
@@ -89,8 +91,8 @@ contract BridgedMilestone is CappedMilestone {
     }
 
     // @notice  If the recipient has not been set, only the manager can set the recipient
-    //          otherwise, only the current recipient or reviewer can change the recipient
-    function changeRecipient(address newRecipient) external {
+    //          otherwise, only the current recipient can change the recipient
+    function changeRecipient(address newRecipient) isInitialized external {
         if (recipient == address(0)) {
             require(msg.sender == manager);
         } else {
@@ -99,25 +101,6 @@ contract BridgedMilestone is CappedMilestone {
         recipient = newRecipient;
 
         RecipientChanged(liquidPledging, idProject, newRecipient);                 
-    }
-
-    /// @dev this is called by liquidPledging after every transfer to and from
-    ///      a pledgeAdmin that has this contract as its plugin
-    /// @dev see ILiquidPledgingPlugin interface for details about context param
-    function afterTransfer(
-        uint64 pledgeManager,
-        uint64 pledgeFrom,
-        uint64 pledgeTo,
-        uint64 context,
-        address token,
-        uint amount
-    ) 
-      isInitialized
-      external
-    {
-        require(msg.sender == address(liquidPledging));
-
-        _returnExcessFunds(context, pledgeFrom, pledgeTo, amount);
     }
 
     // @notice Allows the recipient or manager to initiate withdraw from
@@ -179,12 +162,9 @@ contract BridgedMilestone is CappedMilestone {
         for (uint i = 0; i < tokens.length; i++) {
             token = tokens[i];
 
-            if (token == address(0)) {
-                amount = address(this).balance;
-            } else {
-                ERC20 milestoneToken = ERC20(token);
-                amount = milestoneToken.balanceOf(this);
-            }
+            // We don't currently support native currency
+            ERC20 milestoneToken = ERC20(token);
+            amount = milestoneToken.balanceOf(this);
 
             if (amount > 0) {
                 bridge.withdraw(recipient, token, amount);
@@ -195,6 +175,11 @@ contract BridgedMilestone is CappedMilestone {
 
     function _canRequestReview() internal view returns(bool) {
         return _isManagerOrRecipient();
+    }
+
+    function _canCancel() internal view returns(bool) {
+        // prevent canceling if the milestone is completed
+        return state != MilestoneState.COMPLETED;
     }
 
     function _isManagerOrRecipient() internal view returns(bool) {

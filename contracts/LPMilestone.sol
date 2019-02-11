@@ -51,7 +51,6 @@ contract LPMilestone is CappedMilestone {
 
     //== constructor
 
-    // @notice we pass in the idProject here because it was throwing stack too deep error
     function initialize(
         string _name,
         string _url,
@@ -62,11 +61,10 @@ contract LPMilestone is CappedMilestone {
         uint _reviewTimeoutSeconds,
         address _acceptedToken,
         uint _maxAmount,
-        // if these params are at the beginning, we get a stack too deep error
         address _liquidPledging
     ) onlyInit external
     {
-        super.initialize(_name, _url, _parentProject, _reviewer, _manager, _reviewTimeoutSeconds, _acceptedToken, _liquidPledging);
+        super._initialize(_name, _url, _parentProject, _reviewer, _manager, _reviewTimeoutSeconds, _acceptedToken, _liquidPledging);
 
         if (_maxAmount > 0) {
             CappedMilestone._initialize(_acceptedToken, _maxAmount);
@@ -76,38 +74,19 @@ contract LPMilestone is CappedMilestone {
         require(_recipientNotCanceled());
     }
 
-    /// @dev this is called by liquidPledging after every transfer to and from
-    ///      a pledgeAdmin that has this contract as its plugin
-    /// @dev see ILiquidPledgingPlugin interface for details about context param
-    function afterTransfer(
-        uint64 pledgeManager,
-        uint64 pledgeFrom,
-        uint64 pledgeTo,
-        uint64 context,
-        address token,
-        uint amount
-    ) 
-      isInitialized
-      external
-    {
-        require(msg.sender == address(liquidPledging));
-
-        _returnExcessFunds(context, pledgeFrom, pledgeTo, amount);
-    }
-
-    function transfer(uint64 idPledge, uint amount) onlyManager external {
+    function transfer(uint64 idPledge, uint amount) isInitialized onlyManager external {
         require(_isValidWithdrawState());
         require(_recipientNotCanceled());
 
         liquidPledging.transfer(
-		        idProject,
-			    idPledge,
-			    amount,
-			    recipient
+            idProject,
+            idPledge,
+            amount,
+            recipient
         );
     }
 
-    function mTransfer(uint[] pledgesAmounts) onlyManager external {
+    function mTransfer(uint[] pledgesAmounts) isInitialized onlyManager external {
         require(_isValidWithdrawState());
         require(_recipientNotCanceled());
 
@@ -129,6 +108,12 @@ contract LPMilestone is CappedMilestone {
 
     function _canRequestReview() internal view returns(bool) {
         return _isManager();
+    }
+
+    function _canCancel() internal view returns(bool) {
+        // always allow canceling to prevent locked funds
+        // in cases where recipient is canceled
+        return true;
     }
 
     function _isManager() internal view returns(bool) {

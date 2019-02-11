@@ -36,11 +36,29 @@ contract CappedMilestone is Milestone {
         return maxAmount > 0;
     }
 
+    /// @dev this is called by liquidPledging after every transfer to and from
+    ///      a pledgeAdmin that has this contract as its plugin
+    /// @dev see ILiquidPledgingPlugin interface for details about context param
+    function afterTransfer(
+        uint64 pledgeManager,
+        uint64 pledgeFrom,
+        uint64 pledgeTo,
+        uint64 context,
+        address token,
+        uint amount
+    ) 
+      isInitialized
+      external
+    {
+        require(msg.sender == address(liquidPledging));
+
+        _returnExcessFunds(context, pledgeFrom, pledgeTo, amount);
+    }
+
     function _initialize(address _acceptedToken, uint _maxAmount) internal {
         require(_acceptedToken != ANY_TOKEN);
         require(_maxAmount > 0);
         maxAmount = _maxAmount;
-
     }
 
     /**
@@ -59,22 +77,20 @@ contract CappedMilestone is Milestone {
         uint256 amount
     ) internal 
     {
-        // If fromOwner != toOwner, the means that a pledge is being committed to
-        // milestone. We will accept any amount up to m.maxAmount, and return
-        // the rest
         if (isCapped() && context == TO_OWNER) {
             var (, fromOwner, , , , , ,) = liquidPledging.getPledge(pledgeFrom);
             var (, toOwner, , , , , , ) = liquidPledging.getPledge(pledgeTo);
 
+            // If fromOwner != toOwner, the means that a pledge is being committed to
+            // milestone. We will accept any amount up to m.maxAmount, and return
+            // the rest
             if (fromOwner != toOwner) {
                 uint returnFunds = 0;
-                uint newBalance = received + amount;
+                received += amount;
 
-                if (newBalance > maxAmount) {
-                    returnFunds = newBalance - maxAmount;
+                if (received > maxAmount) {
+                    returnFunds = received - maxAmount;
                     received = maxAmount;
-                } else {
-                    received = received + amount;
                 }
 
                 // send any exceeding funds back

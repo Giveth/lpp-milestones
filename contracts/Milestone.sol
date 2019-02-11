@@ -72,44 +72,6 @@ contract Milestone is AragonApp {
         _;
     }
     
-    //== constructor
-
-    // @notice we pass in the idProject here because it was throwing stack too deep error
-    function initialize(
-        string _name,
-        string _url,
-        uint64 _parentProject,
-        address _reviewer,
-        address _manager,
-        uint _reviewTimeoutSeconds,
-        address _acceptedToken,
-        // if these params are at the beginning, we get a stack too deep error
-        address _liquidPledging
-    ) internal 
-    {
-        require(_manager != address(0));
-        require(_liquidPledging != address(0));
-        initialized();
-
-        liquidPledging = LiquidPledging(_liquidPledging);
-        idProject = liquidPledging.addProject(
-            _name,
-            _url,
-            address(this),
-            _parentProject,
-            0,
-            ILiquidPledgingPlugin(this)
-        ); 
-
-        var ( , addr, , , , , , plugin) = liquidPledging.getPledgeAdmin(idProject);
-        require(addr == address(this) && plugin == address(this));
-
-        reviewer = _reviewer;        
-        manager = _manager;        
-        reviewTimeoutSeconds = _reviewTimeoutSeconds;
-        acceptedToken = _acceptedToken;
-    }
-
     //== external
 
     function isCanceled() public constant returns (bool) {
@@ -119,7 +81,7 @@ contract Milestone is AragonApp {
     // @notice Milestone manager can request to mark a milestone as completed
     // When he does, the timeout is initiated. So if the reviewer doesn't
     // handle the request in time, the recipient can withdraw the funds
-    function requestReview() hasReviewer external {
+    function requestReview() isInitialized hasReviewer external {
         require(_canRequestReview());
         require(!isCanceled());
         require(state == MilestoneState.ACTIVE);
@@ -133,8 +95,9 @@ contract Milestone is AragonApp {
 
     // @notice The reviewer can reject a completion request from the milestone manager
     // When he does, the timeout is reset.
-    function rejectCompleted() onlyReviewer external {
+    function rejectCompleted() isInitialized onlyReviewer external {
         require(!isCanceled());
+        require(state == MilestoneState.NEEDS_REVIEW);
 
         // reset 
         reviewTimeout = 0;
@@ -146,8 +109,9 @@ contract Milestone is AragonApp {
     // @notice The reviewer can approve a completion request from the milestone manager
     // When he does, the milestone's state is set to completed and the funds can be
     // withdrawn by the recipient.
-    function approveCompleted() onlyReviewer external {
+    function approveCompleted() isInitialized onlyReviewer external {
         require(!isCanceled());
+        require(state == MilestoneState.NEEDS_REVIEW);
 
         state = MilestoneState.COMPLETED;
 
@@ -155,16 +119,15 @@ contract Milestone is AragonApp {
     }
 
     // @notice The reviewer and the milestone manager can cancel a milestone.
-    function cancelMilestone() external {
+    function cancelMilestone() isInitialized external {
         require(msg.sender == manager || msg.sender == reviewer);
-        // prevent canceling if the milestone is completed
-        require(state != MilestoneState.COMPLETED);
+        require(_canCancel());
 
         liquidPledging.cancelProject(idProject);
     }    
 
     // @notice Only the current reviewer can change the reviewer.
-    function changeReviewer(address newReviewer) onlyReviewer external {
+    function changeReviewer(address newReviewer) isInitialized onlyReviewer external {
         reviewer = newReviewer;
 
         ReviewerChanged(liquidPledging, idProject, newReviewer);
@@ -199,7 +162,9 @@ contract Milestone is AragonApp {
         string newName,
         string newUrl,
         uint64 newCommitTime
-    ) external
+    ) 
+      isInitialized
+      external
     {
         require(msg.sender == manager);
         liquidPledging.updateProject(
@@ -221,6 +186,37 @@ contract Milestone is AragonApp {
         return acceptedToken != ANY_TOKEN && token != acceptedToken;
     }
 
+    function _initialize(
+        string _name,
+        string _url,
+        uint64 _parentProject,
+        address _reviewer,
+        address _manager,
+        uint _reviewTimeoutSeconds,
+        address _acceptedToken,
+        address _liquidPledging
+    ) internal 
+    {
+        require(_manager != address(0));
+        require(_liquidPledging != address(0));
+        initialized();
+
+        liquidPledging = LiquidPledging(_liquidPledging);
+        idProject = liquidPledging.addProject(
+            _name,
+            _url,
+            address(this),
+            _parentProject,
+            0,
+            ILiquidPledgingPlugin(this)
+        ); 
+
+        reviewer = _reviewer;        
+        manager = _manager;        
+        reviewTimeoutSeconds = _reviewTimeoutSeconds;
+        acceptedToken = _acceptedToken;
+    }
+
     function _isValidWithdrawState() internal returns(bool) {
         if (reviewer == address(0)) {
             return true;
@@ -234,4 +230,5 @@ contract Milestone is AragonApp {
     }
 
     function _canRequestReview() internal view returns(bool);
+    function _canCancel() internal view returns(bool);
 }

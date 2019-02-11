@@ -7,6 +7,7 @@ import "@aragon/os/contracts/kernel/Kernel.sol";
 import "giveth-liquidpledging/contracts/LiquidPledging.sol";
 import "giveth-liquidpledging/contracts/LPConstants.sol";
 
+
 contract MilestoneFactory is LPConstants, VaultRecoverable {
     Kernel public kernel;
 
@@ -62,7 +63,7 @@ contract MilestoneFactory is LPConstants, VaultRecoverable {
             liquidPledging
         );
 
-        DeployBridgedMilestone(address(milestone));
+        DeployLPMilestone(address(milestone));
     }
 
     function newBridgedMilestone(
