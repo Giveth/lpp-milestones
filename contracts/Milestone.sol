@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.24;
 
 /*
     Copyright 2019 RJ Ewing <rj@rjewing.com>
@@ -90,7 +90,7 @@ contract Milestone is AragonApp {
         reviewTimeout = now + reviewTimeoutSeconds;    
         state = MilestoneState.NEEDS_REVIEW;
 
-        RequestReview(liquidPledging, idProject);        
+        emit RequestReview(liquidPledging, idProject);        
     }
 
     // @notice The reviewer can reject a completion request from the milestone manager
@@ -103,7 +103,7 @@ contract Milestone is AragonApp {
         reviewTimeout = 0;
         state = MilestoneState.ACTIVE;
 
-        RejectCompleted(liquidPledging, idProject);
+        emit RejectCompleted(liquidPledging, idProject);
     }   
 
     // @notice The reviewer can approve a completion request from the milestone manager
@@ -115,7 +115,7 @@ contract Milestone is AragonApp {
 
         state = MilestoneState.COMPLETED;
 
-        ApproveCompleted(liquidPledging, idProject);         
+        emit ApproveCompleted(liquidPledging, idProject);         
     }
 
     // @notice The reviewer and the milestone manager can cancel a milestone.
@@ -130,7 +130,7 @@ contract Milestone is AragonApp {
     function changeReviewer(address newReviewer) isInitialized onlyReviewer external {
         reviewer = newReviewer;
 
-        ReviewerChanged(liquidPledging, idProject, newReviewer);
+        emit ReviewerChanged(liquidPledging, idProject, newReviewer);
     }    
 
     /// @dev this is called by liquidPledging before every transfer to and from

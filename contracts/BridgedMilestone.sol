@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.24;
 
 /*
     Copyright 2019 RJ Ewing <rj@rjewing.com>
@@ -19,7 +19,7 @@ pragma solidity ^0.4.18;
 
 import "./CappedMilestone.sol";
 import "giveth-bridge/contracts/IForeignGivethBridge.sol";
-import "@aragon/os/contracts/kernel/Kernel.sol";
+import "giveth-liquidpledging/contracts/lib/aragon/IKernelEnhanced.sol";
 
 /// @title BridgedMilestone
 /// @author RJ Ewing<rj@rjewing.com>
@@ -43,8 +43,8 @@ import "@aragon/os/contracts/kernel/Kernel.sol";
 
 contract BridgedMilestone is CappedMilestone {
 
-    // keccack256(Kernel.APP_ADDR_NAMESPACE(), keccack256("ForeignGivethBridge"))
-    bytes32 constant public FOREIGN_BRIDGE_INSTANCE = 0xa46b3f7f301ac0173ef5564df485fccae3b60583ddb12c767fea607ff6971d0b;
+    // keccak256("ForeignGivethBridge")
+    bytes32 constant public FOREIGN_BRIDGE_ID = 0xa46b3f7f301ac0173ef5564df485fccae3b60583ddb12c767fea607ff6971d0b;
 
     address public recipient;
 
@@ -100,7 +100,7 @@ contract BridgedMilestone is CappedMilestone {
         }
         recipient = newRecipient;
 
-        RecipientChanged(liquidPledging, idProject, newRecipient);                 
+        emit RecipientChanged(liquidPledging, idProject, newRecipient);                 
     }
 
     // @notice Allows the recipient or manager to initiate withdraw from
@@ -153,8 +153,8 @@ contract BridgedMilestone is CappedMilestone {
     }
 
     function _mDisburse(address[] tokens) internal {
-        Kernel kernel = Kernel(liquidPledging.kernel());
-        IForeignGivethBridge bridge = IForeignGivethBridge(kernel.getApp(FOREIGN_BRIDGE_INSTANCE));
+        IKernelEnhanced kernel = IKernelEnhanced(liquidPledging.kernel());
+        IForeignGivethBridge bridge = IForeignGivethBridge(kernel.getApp(kernel.APP_ADDR_NAMESPACE(), FOREIGN_BRIDGE_ID));
 
         uint amount;
         address token;
@@ -168,7 +168,7 @@ contract BridgedMilestone is CappedMilestone {
 
             if (amount > 0) {
                 bridge.withdraw(recipient, token, amount);
-                PaymentCollected(liquidPledging, idProject);            
+                emit PaymentCollected(liquidPledging, idProject);            
             }
         }
     }

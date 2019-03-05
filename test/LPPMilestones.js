@@ -1,23 +1,28 @@
 /* eslint-env mocha */
 /* eslint-disable no-await-in-loop */
-const Ganache = require('ganache-cli');
 const { assert } = require('chai');
-const { LPMilestone, BridgedMilestone, MilestoneFactory } = require('../index');
-const { Kernel, ACL, test } = require('giveth-liquidpledging');
 const { ForeignGivethBridge } = require('giveth-bridge');
-const { MiniMeToken, MiniMeTokenFactory, MiniMeTokenState } = require('minimetoken');
-const Web3 = require('web3');
-const { assertFail, deployLP } = test;
+const { assertFail, deployLP, embarkConfig } = require('giveth-liquidpledging').test;
+const { MiniMeToken, MiniMeTokenFactory } = require('minimetoken');
 
-const { utils } = Web3;
+const { utils } = require('web3');
 
 const MAX_GAS = 8000000;
+
+const LPMilestone = embark.require('Embark/contracts/LPMilestone');
+const BridgedMilestone = embark.require('Embark/contracts/BridgedMilestone');
+const MilestoneFactory = embark.require('Embark/contracts/MilestoneFactory');
+const Kernel = embark.require('Embark/contracts/Kernel');
+const ACL = embark.require('Embark/contracts/ACL');
+
+embarkConfig({
+  LPMilestone: {},
+  BridgedMilestone: {},
+});
 
 describe('LPPMilestones', function() {
   this.timeout(0);
 
-  let testrpc;
-  let web3;
   let accounts;
   let liquidPledging;
   let kernel;
@@ -36,16 +41,8 @@ describe('LPPMilestones', function() {
   let someRandomToken;
 
   before(async () => {
-    testrpc = Ganache.server({
-      ws: true,
-      gasLimit: MAX_GAS,
-      total_accounts: 11,
-    });
-
-    testrpc.listen(8545, '127.0.0.1', err => {});
-
-    web3 = new Web3('ws://localhost:8545');
-    accounts = await web3.eth.getAccounts();
+    const deployment = await deployLP();
+    accounts = deployment.accounts;
 
     giver2 = accounts[3];
     milestoneManager1 = accounts[4];
@@ -54,19 +51,18 @@ describe('LPPMilestones', function() {
     campaignReviewer1 = accounts[7];
     recipient2 = accounts[8];
     reviewer2 = accounts[9];
-    campaignReviewer2 = accounts[10];
+    campaignReviewer2 = accounts[1];
     delegateAdmin = accounts[5];
     projectAdmin = accounts[6];
 
-    const deployment = await deployLP(web3);
     giver1 = deployment.giver1;
     vault = deployment.vault;
     liquidPledging = deployment.liquidPledging;
     liquidPledgingState = deployment.liquidPledgingState;
 
     // set permissions
-    kernel = new Kernel(web3, await liquidPledging.kernel());
-    acl = new ACL(web3, await kernel.acl());
+    kernel = Kernel.at(await liquidPledging.kernel());
+    acl = ACL.at(await kernel.acl());
     await acl.createPermission(
       accounts[0],
       vault.$address,
@@ -90,7 +86,7 @@ describe('LPPMilestones', function() {
     giver1Token = await MiniMeToken.new(
       web3,
       tokenFactory.$address,
-      0,
+      '0x0000000000000000000000000000000000000000',
       0,
       'Giver Token',
       18,
@@ -103,7 +99,7 @@ describe('LPPMilestones', function() {
     someRandomToken = await MiniMeToken.new(
       web3,
       tokenFactory.$address,
-      0,
+      '0x0000000000000000000000000000000000000000',
       0,
       'Random Token',
       18,
@@ -120,7 +116,7 @@ describe('LPPMilestones', function() {
       tokenFactory.$address,
       liquidPledging.$address,
       accounts[0],
-      [0, giver1Token.$address],
+      ['0x0000000000000000000000000000000000000000', giver1Token.$address],
       [giver1Token.$address, someRandomToken.$address],
       { from: accounts[0], $extraGas: 100000 },
     );
@@ -136,29 +132,24 @@ describe('LPPMilestones', function() {
     await someRandomToken.changeController(bridge.$address);
 
     // create delegate1
-    await liquidPledging.addDelegate('Delegate1', 'URLDelegate1', 0, 0, {
+    await liquidPledging.addDelegate('Delegate1', 'URLDelegate1', 0, '0x0000000000000000000000000000000000000000', {
       from: delegateAdmin,
       $extraGas: 100000,
     }); // admin 1
 
     // create project1
-    await liquidPledging.addProject('Project1', '', projectAdmin, 0, 0, 0, {
+    await liquidPledging.addProject('Project1', '', projectAdmin, 0, 0, '0x0000000000000000000000000000000000000000', {
       from: projectAdmin,
       $extraGas: 100000,
     }); // admin 2
 
-    await liquidPledging.addGiver('Giver1', 'URL', 0, 0x0, { from: giver1 });
+    await liquidPledging.addGiver('Giver1', 'URL', 0, '0x0000000000000000000000000000000000000000', { from: giver1 });
     idGiver1 = 3;
-  });
-
-  after(done => {
-    testrpc.close();
-    done();
   });
 
   describe('MilestoneFactory Deployment', function() {
     it('Should deploy Milestone Factory', async () => {
-      factory = await MilestoneFactory.new(web3, kernel.$address, { $extraGas: 100000 });
+      factory = await MilestoneFactory.new(kernel.$address);
 
       await acl.grantPermission(
         factory.$address,
@@ -181,19 +172,17 @@ describe('LPPMilestones', function() {
         { $extraGas: 100000 },
       );
 
-      const lpMilestoneApp = await LPMilestone.new(web3);
       await kernel.setApp(
         await kernel.APP_BASES_NAMESPACE(),
         await factory.LP_MILESTONE_APP_ID(),
-        lpMilestoneApp.$address,
+        LPMilestone.$address,
         { $extraGas: 100000 },
       );
 
-      const bridgedMilestoneApp = await BridgedMilestone.new(web3);
       await kernel.setApp(
         await kernel.APP_BASES_NAMESPACE(),
         await factory.BRIDGED_MILESTONE_APP_ID(),
-        bridgedMilestoneApp.$address,
+        BridgedMilestone.$address,
         { $extraGas: 100000 },
       );
 
@@ -220,7 +209,7 @@ describe('LPPMilestones', function() {
 
         const milestoneAdmin = await liquidPledging.getPledgeAdmin(4);
 
-        milestone = new BridgedMilestone(web3, milestoneAdmin.plugin);
+        milestone = BridgedMilestone.at(milestoneAdmin.plugin);
 
         assert.equal(milestoneAdmin.adminType, '2');
         assert.equal(milestoneAdmin.addr, milestone.$address);
@@ -457,7 +446,7 @@ describe('LPPMilestones', function() {
         // recipient can withdraw & disburse
         res = await milestone.mWithdraw(encodedPledges, [giver1Token.$address], true, {
           from: recipient1,
-          $extraGas: 100000,
+          gas: MAX_GAS
         });
         let fromBlock = await web3.eth.getBlockNumber();
         let bridgeEvents = await bridge.$contract.getPastEvents('Withdraw', { fromBlock });
@@ -468,13 +457,13 @@ describe('LPPMilestones', function() {
         // manager can withdraw a single pledge & autoDisburse
         res = await milestone.withdraw(2, 10, giver1Token.$address, {
           from: milestoneManager1,
-          $extraGas: 100000,
+          gas: MAX_GAS
         });
         fromBlock = await web3.eth.getBlockNumber();
         // recipient can withdraw a single pledge
         const res2 = await milestone.withdraw(2, 10, giver1Token.$address, {
           from: recipient1,
-          $extraGas: 100000,
+          gas: MAX_GAS
         });
         bridgeEvents = await bridge.$contract.getPastEvents('Withdraw', { fromBlock });
 
@@ -499,7 +488,7 @@ describe('LPPMilestones', function() {
       });
 
       it('Should reject "escapeHatch" attempts for acceptedToken', async function() {
-        assert.equal(await milestone.allowRecoverability(0x0), true);
+        assert.equal(await milestone.allowRecoverability('0x0000000000000000000000000000000000000000'), true);
         assert.equal(await milestone.allowRecoverability(giver1Token.$address), false);
       });
 
@@ -536,7 +525,7 @@ describe('LPPMilestones', function() {
 
         const milestoneAdmin = await liquidPledging.getPledgeAdmin(5);
 
-        milestone = new BridgedMilestone(web3, milestoneAdmin.plugin);
+        milestone = BridgedMilestone.at(milestoneAdmin.plugin);
 
         assert.equal(milestoneAdmin.adminType, '2');
         assert.equal(milestoneAdmin.addr, milestone.$address);
@@ -661,7 +650,7 @@ describe('LPPMilestones', function() {
       });
 
       it('Should reject "escapeHatch" attempts for any token', async () => {
-        assert.equal(await milestone.allowRecoverability(0x0), false);
+        assert.equal(await milestone.allowRecoverability('0x0000000000000000000000000000000000000000'), false);
         assert.equal(await milestone.allowRecoverability(giver1Token.$address), false);
         assert.equal(await milestone.allowRecoverability(someRandomToken.$address), false);
       });
@@ -685,7 +674,7 @@ describe('LPPMilestones', function() {
 
         const milestoneAdmin = await liquidPledging.getPledgeAdmin(6);
 
-        milestone = new BridgedMilestone(web3, milestoneAdmin.plugin);
+        milestone = BridgedMilestone.at(milestoneAdmin.plugin);
 
         assert.equal(milestoneAdmin.adminType, '2');
         assert.equal(milestoneAdmin.addr, milestone.$address);
@@ -787,7 +776,7 @@ describe('LPPMilestones', function() {
 
         const milestoneAdmin = await liquidPledging.getPledgeAdmin(7);
 
-        milestone = new BridgedMilestone(web3, milestoneAdmin.plugin);
+        milestone = BridgedMilestone.at(milestoneAdmin.plugin);
 
         assert.equal(milestoneAdmin.adminType, '2');
         assert.equal(milestoneAdmin.addr, milestone.$address);
@@ -875,7 +864,7 @@ describe('LPPMilestones', function() {
 
         const milestoneAdmin = await liquidPledging.getPledgeAdmin(8);
 
-        milestone = new LPMilestone(web3, milestoneAdmin.plugin);
+        milestone = LPMilestone.at(milestoneAdmin.plugin);
 
         assert.equal(milestoneAdmin.adminType, '2');
         assert.equal(milestoneAdmin.addr, milestone.$address);
@@ -987,7 +976,7 @@ describe('LPPMilestones', function() {
 
       let milestoneAdmin = await liquidPledging.getPledgeAdmin(9);
 
-      milestone = new LPMilestone(web3, milestoneAdmin.plugin);
+      milestone = LPMilestone.at(milestoneAdmin.plugin);
 
       await assertFail(milestone.cancelMilestone({ from: recipient1, gas: MAX_GAS }));
 
@@ -1010,7 +999,7 @@ describe('LPPMilestones', function() {
       );
 
       milestoneAdmin = await liquidPledging.getPledgeAdmin(10);
-      milestone = new BridgedMilestone(web3, milestoneAdmin.plugin);
+      milestone = BridgedMilestone.at(milestoneAdmin.plugin);
 
       // milestone manager can cancel
       await milestone.cancelMilestone({ from: milestoneManager1, $extraGas: 100000 });
@@ -1043,7 +1032,7 @@ describe('LPPMilestones', function() {
       );
 
       milestoneAdmin = await liquidPledging.getPledgeAdmin(11);
-      milestone = new LPMilestone(web3, milestoneAdmin.plugin);
+      milestone = LPMilestone.at(milestoneAdmin.plugin);
 
       await milestone.requestReview({ from: milestoneManager1, $extraGas: 100000 });
       await milestone.approveCompleted({ from: reviewer1, $extraGas: 100000 });

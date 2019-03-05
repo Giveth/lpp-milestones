@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.24;
 
 /*
     Copyright 2019 RJ Ewing <rj@rjewing.com>
@@ -99,7 +99,7 @@ contract LPMilestone is CappedMilestone {
 
     function _recipientNotCanceled() internal view returns(bool) {
         // note: this will throw if idProject doesn't exist
-        var ( adminType, , , , , , , ) = liquidPledging.getPledgeAdmin(recipient);
+        ( LiquidPledging.PledgeAdminType adminType, , , , , , , ) = liquidPledging.getPledgeAdmin(recipient);
         if (adminType == LiquidPledgingStorage.PledgeAdminType.Project) {
             return !liquidPledging.isProjectCanceled(recipient);
         }

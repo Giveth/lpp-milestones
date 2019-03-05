@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.24;
 
 /*
     Copyright 2019 RJ Ewing <rj@rjewing.com>
@@ -78,8 +78,8 @@ contract CappedMilestone is Milestone {
     ) internal 
     {
         if (isCapped() && context == TO_OWNER) {
-            var (, fromOwner, , , , , ,) = liquidPledging.getPledge(pledgeFrom);
-            var (, toOwner, , , , , , ) = liquidPledging.getPledge(pledgeTo);
+            (, uint64 fromOwner, , , , , ,) = liquidPledging.getPledge(pledgeFrom);
+            (, uint64 toOwner, , , , , , ) = liquidPledging.getPledge(pledgeTo);
 
             // If fromOwner != toOwner, the means that a pledge is being committed to
             // milestone. We will accept any amount up to m.maxAmount, and return
