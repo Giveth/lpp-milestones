@@ -36,6 +36,10 @@ contract Milestone is AragonApp {
     uint internal constant TO_OWNER = 256;
     uint internal constant TO_INTENDEDPROJECT = 511;
 
+    string internal constant ERROR_WITHDRAWAL_STATE = "INVALID_WITHDRAWAL_STATE";
+    string internal constant ERROR_ONLY_REVIEWER = "ONLY_REVIEWER";
+    string internal constant ERROR_NO_REVIEWER = "NO_REVIEWER";
+
     address public constant ANY_TOKEN = address(-1);
 
     enum MilestoneState { ACTIVE, NEEDS_REVIEW, COMPLETED }
@@ -63,12 +67,12 @@ contract Milestone is AragonApp {
 
 
     modifier onlyReviewer() {
-        require(msg.sender == reviewer);
+        require(msg.sender == reviewer, ERROR_ONLY_REVIEWER);
         _;
     }
 
     modifier hasReviewer() {
-        require(reviewer != address(0));
+        require(reviewer != address(0), ERROR_NO_REVIEWER);
         _;
     }
     

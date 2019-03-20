@@ -52,13 +52,13 @@ contract BridgedMilestone is CappedMilestone {
     event PaymentCollected(address indexed liquidPledging, uint64 indexed idProject);
 
     modifier onlyManagerOrRecipient() {
-        require(_isManagerOrRecipient());
+        require(_isManagerOrRecipient(), "ONLY_MANAGER_OR_RECIPIENT");
         _;
     }   
 
     modifier canWithdraw() { 
-        require(recipient != address(0));
-        require(_isValidWithdrawState());
+        require(recipient != address(0), "NO_RECIPIENT");
+        require(_isValidWithdrawState(), ERROR_WITHDRAWAL_STATE);
         _;
     }
 
@@ -81,7 +81,7 @@ contract BridgedMilestone is CappedMilestone {
 
         // Current bridge implementation doesn't handle native currencies
         // This may change in the future
-        require(_acceptedToken != 0x0);
+        require(_acceptedToken != 0x0, "NO_NATIVE_TOKEN");
 
         if (_maxAmount > 0) {
             CappedMilestone._initialize(_acceptedToken, _maxAmount);
@@ -94,9 +94,9 @@ contract BridgedMilestone is CappedMilestone {
     //          otherwise, only the current recipient can change the recipient
     function changeRecipient(address newRecipient) isInitialized external {
         if (recipient == address(0)) {
-            require(msg.sender == manager);
+            require(msg.sender == manager, "ONLY_MANAGER");
         } else {
-            require(msg.sender == recipient);
+            require(msg.sender == recipient, "ONLY_RECIPIENT");
         }
         recipient = newRecipient;
 
