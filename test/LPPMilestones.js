@@ -132,18 +132,38 @@ describe('LPPMilestones', function() {
     await someRandomToken.changeController(bridge.$address);
 
     // create delegate1
-    await liquidPledging.addDelegate('Delegate1', 'URLDelegate1', 0, '0x0000000000000000000000000000000000000000', {
-      from: delegateAdmin,
-      $extraGas: 100000,
-    }); // admin 1
+    await liquidPledging.addDelegate(
+      'Delegate1',
+      'URLDelegate1',
+      0,
+      '0x0000000000000000000000000000000000000000',
+      {
+        from: delegateAdmin,
+        $extraGas: 100000,
+      },
+    ); // admin 1
 
     // create project1
-    await liquidPledging.addProject('Project1', '', projectAdmin, 0, 0, '0x0000000000000000000000000000000000000000', {
-      from: projectAdmin,
-      $extraGas: 100000,
-    }); // admin 2
+    await liquidPledging.addProject(
+      'Project1',
+      '',
+      projectAdmin,
+      0,
+      0,
+      '0x0000000000000000000000000000000000000000',
+      {
+        from: projectAdmin,
+        $extraGas: 100000,
+      },
+    ); // admin 2
 
-    await liquidPledging.addGiver('Giver1', 'URL', 0, '0x0000000000000000000000000000000000000000', { from: giver1 });
+    await liquidPledging.addGiver(
+      'Giver1',
+      'URL',
+      0,
+      '0x0000000000000000000000000000000000000000',
+      { from: giver1 },
+    );
     idGiver1 = 3;
   });
 
@@ -446,7 +466,7 @@ describe('LPPMilestones', function() {
         // recipient can withdraw & disburse
         res = await milestone.mWithdraw(encodedPledges, [giver1Token.$address], true, {
           from: recipient1,
-          gas: MAX_GAS
+          gas: MAX_GAS,
         });
         let fromBlock = await web3.eth.getBlockNumber();
         let bridgeEvents = await bridge.$contract.getPastEvents('Withdraw', { fromBlock });
@@ -457,13 +477,13 @@ describe('LPPMilestones', function() {
         // manager can withdraw a single pledge & autoDisburse
         res = await milestone.withdraw(2, 10, giver1Token.$address, {
           from: milestoneManager1,
-          gas: MAX_GAS
+          gas: MAX_GAS,
         });
         fromBlock = await web3.eth.getBlockNumber();
         // recipient can withdraw a single pledge
         const res2 = await milestone.withdraw(2, 10, giver1Token.$address, {
           from: recipient1,
-          gas: MAX_GAS
+          gas: MAX_GAS,
         });
         bridgeEvents = await bridge.$contract.getPastEvents('Withdraw', { fromBlock });
 
@@ -488,7 +508,10 @@ describe('LPPMilestones', function() {
       });
 
       it('Should reject "escapeHatch" attempts for acceptedToken', async function() {
-        assert.equal(await milestone.allowRecoverability('0x0000000000000000000000000000000000000000'), true);
+        assert.equal(
+          await milestone.allowRecoverability('0x0000000000000000000000000000000000000000'),
+          true,
+        );
         assert.equal(await milestone.allowRecoverability(giver1Token.$address), false);
       });
 
@@ -650,7 +673,10 @@ describe('LPPMilestones', function() {
       });
 
       it('Should reject "escapeHatch" attempts for any token', async () => {
-        assert.equal(await milestone.allowRecoverability('0x0000000000000000000000000000000000000000'), false);
+        assert.equal(
+          await milestone.allowRecoverability('0x0000000000000000000000000000000000000000'),
+          false,
+        );
         assert.equal(await milestone.allowRecoverability(giver1Token.$address), false);
         assert.equal(await milestone.allowRecoverability(someRandomToken.$address), false);
       });
@@ -663,7 +689,7 @@ describe('LPPMilestones', function() {
           'URL 3',
           0,
           reviewer1,
-          0,
+          '0x0000000000000000000000000000000000000000',
           milestoneManager1,
           0,
           await milestone.ANY_TOKEN(),
@@ -764,7 +790,7 @@ describe('LPPMilestones', function() {
           'BridgedMilestone 4',
           'URL 4',
           0,
-          0,
+          '0x0000000000000000000000000000000000000000',
           recipient1,
           milestoneManager1,
           0,
@@ -852,7 +878,7 @@ describe('LPPMilestones', function() {
           'LPMilestone 1',
           'URL1',
           0,
-          0,
+          '0x0000000000000000000000000000000000000000',
           2, // project1
           milestoneManager1,
           maxAmount,
