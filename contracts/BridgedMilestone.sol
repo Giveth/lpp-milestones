@@ -44,7 +44,7 @@ import "giveth-liquidpledging/contracts/lib/aragon/IKernelEnhanced.sol";
 contract BridgedMilestone is CappedMilestone {
 
     // keccak256("ForeignGivethBridge")
-    bytes32 constant public FOREIGN_BRIDGE_ID = 0xa46b3f7f301ac0173ef5564df485fccae3b60583ddb12c767fea607ff6971d0b;
+    bytes32 constant public FOREIGN_BRIDGE_ID = 0x304d2fc3aa031b861c3906c5d3f8d5c80d2e6adb979d9cc223a6a3f445cb7e1d;
 
     address public recipient;
 
