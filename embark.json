@@ -20,7 +20,8 @@
     "ipfs-api": "17.2.4"
   },
   "plugins": {
-    "eth-contract-class/embark": {}
+    "eth-contract-class/embark": {},
+    "embarkjs-connector-web3": {}
   },
   "options": {
     "solc": {

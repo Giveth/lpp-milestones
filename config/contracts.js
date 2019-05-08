@@ -54,6 +54,10 @@ module.exports = {
       '$WEB3', // uses pre existing web3 object if available (e.g in Mist)
     ],
     contracts: {
+      // LiquidPledging contracts
+      RecoveryVault: {
+        artifact: 'node_modules/giveth-liquidpledging/dist/contracts/RecoveryVault.json',
+      },
     },
   },
 
