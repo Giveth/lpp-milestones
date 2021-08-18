@@ -1,8 +1,8 @@
 const generateClass = require('@giveth/eth-contract-class').default;
 
-const factoryArtifact = require('./build/MilestoneFactory.json');
-const bridgedMilestoneArtifact = require('./build/BridgedMilestone.json');
-const lpMilestoneArtifact = require('./build/LPMilestone.json');
+const factoryArtifact = require('./dist/contracts/MilestoneFactory.json');
+const bridgedMilestoneArtifact = require('./dist/contracts/BridgedMilestone.json');
+const lpMilestoneArtifact = require('./dist/contracts/LPMilestone.json');
 
 module.exports = {
   LPMilestone: generateClass(lpMilestoneArtifact.compilerOutput.abi, lpMilestoneArtifact.compilerOutput.evm.bytecode.object),

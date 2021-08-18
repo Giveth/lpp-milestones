@@ -1,6 +1,6 @@
 {
   "name": "@giveth/lpp-milestones",
-  "version": "2.0.0-beta.2",
+  "version": "2.0.0-beta.3",
   "description": "LiquidPledging milestone contracts",
   "main": "index.js",
   "directories": {
@@ -8,9 +8,9 @@
   },
   "files": [
     "contracts",
-    "build/MilestoneFactory.json",
-    "build/BridgedMilestone.json",
-    "build/LPMilestone.json"
+    "dist/contracts/MilestoneFactory.json",
+    "dist/contracts/BridgedMilestone.json",
+    "dist/contracts/LPMilestone.json"
   ],
   "scripts": {
     "test": "embark test",
