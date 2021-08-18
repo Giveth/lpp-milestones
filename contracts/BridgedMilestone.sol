@@ -18,15 +18,15 @@ pragma solidity ^0.4.24;
 */
 
 import "./CappedMilestone.sol";
-import "giveth-bridge/contracts/IForeignGivethBridge.sol";
-import "giveth-liquidpledging/contracts/lib/aragon/IKernelEnhanced.sol";
+import "@giveth/bridge-contract/contracts/IForeignGivethBridge.sol";
+import "@giveth/liquidpledging-contract/contracts/lib/aragon/IKernelEnhanced.sol";
 
 /// @title BridgedMilestone
 /// @author RJ Ewing<rj@rjewing.com>
 /// @notice The BridgedMilestone contract is a plugin contract for liquidPledging,
 ///  extending the functionality of a liquidPledging project. This contract
 ///  provides the following functionality:
-///  
+///
 ///  1. If reviewer is set:
 ///     1. Milestone must be in the Completed state to withdraw
 ///  2. If maxAmount is set:
@@ -54,9 +54,9 @@ contract BridgedMilestone is CappedMilestone {
     modifier onlyManagerOrRecipient() {
         require(_isManagerOrRecipient(), "ONLY_MANAGER_OR_RECIPIENT");
         _;
-    }   
+    }
 
-    modifier canWithdraw() { 
+    modifier canWithdraw() {
         require(recipient != address(0), "NO_RECIPIENT");
         require(_isValidWithdrawState(), ERROR_WITHDRAWAL_STATE);
         _;
@@ -100,7 +100,7 @@ contract BridgedMilestone is CappedMilestone {
         }
         recipient = newRecipient;
 
-        emit RecipientChanged(liquidPledging, idProject, newRecipient);                 
+        emit RecipientChanged(liquidPledging, idProject, newRecipient);
     }
 
     // @notice Allows the recipient or manager to initiate withdraw from
@@ -108,7 +108,7 @@ contract BridgedMilestone is CappedMilestone {
     // payment to the recipient. If there is a delay between withdrawing from LiquidPledging
     // and the funds being sent, then a 2nd call to `disburse(address token)` will need to be
     // made to send the funds to the `recipient`
-    // @param pledgesAmounts An array of Pledge amounts and the idPledges with 
+    // @param pledgesAmounts An array of Pledge amounts and the idPledges with
     //  which the amounts are associated; these are extrapolated using the D64
     //  bitmask
     // @param tokens An array of token addresses the the pledges represent
@@ -168,7 +168,7 @@ contract BridgedMilestone is CappedMilestone {
 
             if (amount > 0) {
                 bridge.withdraw(recipient, token, amount);
-                emit PaymentCollected(liquidPledging, idProject);            
+                emit PaymentCollected(liquidPledging, idProject);
             }
         }
     }

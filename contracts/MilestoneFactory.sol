@@ -3,9 +3,9 @@ pragma solidity ^0.4.24;
 import "./BridgedMilestone.sol";
 import "./LPMilestone.sol";
 import "@aragon/os/contracts/common/VaultRecoverable.sol";
-import "giveth-liquidpledging/contracts/LiquidPledging.sol";
-import "giveth-liquidpledging/contracts/LPConstants.sol";
-import "giveth-liquidpledging/contracts/lib/aragon/IKernelEnhanced.sol";
+import "@giveth/liquidpledging-contract/contracts/LiquidPledging.sol";
+import "@giveth/liquidpledging-contract/contracts/LPConstants.sol";
+import "@giveth/liquidpledging-contract/contracts/lib/aragon/IKernelEnhanced.sol";
 
 
 contract MilestoneFactory is LPConstants, VaultRecoverable {
@@ -21,7 +21,7 @@ contract MilestoneFactory is LPConstants, VaultRecoverable {
 
     constructor(IKernelEnhanced _kernel) public {
         // Note: This contract will need CREATE_PERMISSIONS_ROLE on the ACL,
-        // the PLUGIN_MANAGER_ROLE on liquidPledging, 
+        // the PLUGIN_MANAGER_ROLE on liquidPledging,
         // and the APP_MANAGER_ROLE (KERNEL_APP_BASES_NAMESPACE, CAMPAIGN_APP_ID) on the Kernel.
         // The MILESTONE_APP and LP_APP_INSTANCE need to be registered with the kernel
 
@@ -37,7 +37,7 @@ contract MilestoneFactory is LPConstants, VaultRecoverable {
         uint64 _recipient,
         address _milestoneManager,
         uint _maxAmount,
-        address _acceptedToken,        
+        address _acceptedToken,
         uint _reviewTimeoutSeconds
     ) public
     {
@@ -73,7 +73,7 @@ contract MilestoneFactory is LPConstants, VaultRecoverable {
         address _recipient,
         address _milestoneManager,
         uint _maxAmount,
-        address _acceptedToken,        
+        address _acceptedToken,
         uint _reviewTimeoutSeconds
     ) public
     {

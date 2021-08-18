@@ -1,7 +1,7 @@
 {
   "contracts": [
     "contracts/**",
-    "./node_modules/giveth-liquidpledging/contracts/**/*.sol",
+    "./node_modules/@giveth/liquidpledging-contract/contracts/**/*.sol",
     "./node_modules/@aragon/os/contracts/{kernel/Kernel.sol,acl/ACL.sol,apps/AppProxyUpgradeable.sol,factory/DAOFactory.sol}"
   ],
   "app": {},
@@ -20,7 +20,7 @@
     "ipfs-api": "17.2.4"
   },
   "plugins": {
-    "eth-contract-class/embark": {}
+    "@giveth/eth-contract-class/embark": {}
   },
   "options": {
     "solc": {
