@@ -5,10 +5,10 @@ const bridgedMilestoneArtifact = require('./dist/contracts/BridgedMilestone.json
 const lpMilestoneArtifact = require('./dist/contracts/LPMilestone.json');
 
 module.exports = {
-  LPMilestone: generateClass(lpMilestoneArtifact.compilerOutput.abi, lpMilestoneArtifact.compilerOutput.evm.bytecode.object),
+  LPMilestone: generateClass(lpMilestoneArtifact.abiDefinition, lpMilestoneArtifact.code),
   BridgedMilestone: generateClass(
-    bridgedMilestoneArtifact.compilerOutput.abi,
-    bridgedMilestoneArtifact.compilerOutput.evm.bytecode.object,
+    bridgedMilestoneArtifact.abiDefinition,
+    bridgedMilestoneArtifact.code,
   ),
-  MilestoneFactory: generateClass(factoryArtifact.compilerOutput.abi, factoryArtifact.compilerOutput.evm.bytecode.object),
+  MilestoneFactory: generateClass(factoryArtifact.abiDefinition, factoryArtifact.code),
 };
