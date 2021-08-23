@@ -45,9 +45,10 @@
     "embark": "^4.1.1",
     "embark-solc": "^4.1.1",
     "eslint": "^4.3.0",
+    "giveth-bridge": "1.0.4",
     "minimetoken": "^0.2.0",
+    "solcpiler": "^1.0.0-beta.10",
     "solium": "^1.0.9",
-    "web3": "^1.5.2",
-    "giveth-bridge": "1.0.4"
+    "web3": "^1.5.2"
   }
 }
