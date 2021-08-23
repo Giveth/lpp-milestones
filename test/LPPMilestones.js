@@ -2,7 +2,7 @@
 /* eslint-disable no-await-in-loop */
 const { assert } = require('chai');
 const { ForeignGivethBridge } = require('giveth-bridge');
-const { assertFail, deployLP, embarkConfig } = require('giveth-liquidpledging').test;
+const { assertFail, deployLP, embarkConfig } = require('@giveth/liquidpledging-contract').test;
 const { MiniMeToken, MiniMeTokenFactory } = require('minimetoken');
 
 const { utils } = require('web3');

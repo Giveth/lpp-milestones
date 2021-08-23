@@ -1,11 +1,17 @@
 {
-  "name": "lpp-milestones",
-  "version": "2.0.0-beta.1",
+  "name": "@giveth/lpp-milestones",
+  "version": "2.0.0-beta.4",
   "description": "LiquidPledging milestone contracts",
   "main": "index.js",
   "directories": {
     "lib": "lib"
   },
+  "files": [
+    "contracts",
+    "dist/contracts/MilestoneFactory.json",
+    "dist/contracts/BridgedMilestone.json",
+    "dist/contracts/LPMilestone.json"
+  ],
   "scripts": {
     "test": "embark test",
     "lint": "solium --dir contracts",
@@ -31,17 +37,17 @@
   "homepage": "https://github.com/Giveth/lpp-milestones#readme",
   "dependencies": {
     "@aragon/os": "4.0.1",
-    "embark": "4.0.0-beta.0",
-    "giveth-bridge": "1.0.4",
-    "giveth-liquidpledging": "2.0.0-beta.2"
+    "@giveth/bridge-contract": "^1.0.6",
+    "@giveth/eth-contract-class": "^1.1.0",
+    "@giveth/liquidpledging-contract": "^2.0.0-beta.6"
   },
   "devDependencies": {
-    "embark-solc": "git+https://git@github.com/embark-framework/embark-solc.git#develop",
+    "embark": "^4.1.1",
+    "embark-solc": "^4.1.1",
     "eslint": "^4.3.0",
-    "eth-contract-class": "^0.0.13-beta.1",
-    "lerna": "^2.2.0",
     "minimetoken": "^0.2.0",
     "solium": "^1.0.9",
-    "web3": "1.0.0-beta.34"
+    "web3": "^1.5.2",
+    "giveth-bridge": "1.0.4"
   }
 }

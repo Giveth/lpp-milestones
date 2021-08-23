@@ -17,7 +17,7 @@ pragma solidity ^0.4.24;
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import "giveth-liquidpledging/contracts/LiquidPledging.sol";
+import "@giveth/liquidpledging-contract/contracts/LiquidPledging.sol";
 import "@aragon/os/contracts/apps/AragonApp.sol";
 
 
@@ -28,9 +28,9 @@ import "@aragon/os/contracts/apps/AragonApp.sol";
 ///  This contract provides the base functionality
 ///
 ///  1. The admin can cancel the milestone, update the conditions the milestone accepts transfers
-///  and send a tx as the milestone. 
-///  2. The reviewer can cancel the milestone. 
-///  3. The recipient role will receive the pledge's owned by this milestone. 
+///  and send a tx as the milestone.
+///  2. The reviewer can cancel the milestone.
+///  3. The recipient role will receive the pledge's owned by this milestone.
 
 contract Milestone is AragonApp {
     uint internal constant TO_OWNER = 256;
@@ -75,7 +75,7 @@ contract Milestone is AragonApp {
         require(reviewer != address(0), ERROR_NO_REVIEWER);
         _;
     }
-    
+
     //== external
 
     function isCanceled() public constant returns (bool) {
@@ -91,10 +91,10 @@ contract Milestone is AragonApp {
         require(state == MilestoneState.ACTIVE);
 
         // start the review timeout
-        reviewTimeout = now + reviewTimeoutSeconds;    
+        reviewTimeout = now + reviewTimeoutSeconds;
         state = MilestoneState.NEEDS_REVIEW;
 
-        emit RequestReview(liquidPledging, idProject);        
+        emit RequestReview(liquidPledging, idProject);
     }
 
     // @notice The reviewer can reject a completion request from the milestone manager
@@ -103,12 +103,12 @@ contract Milestone is AragonApp {
         require(!isCanceled());
         require(state == MilestoneState.NEEDS_REVIEW);
 
-        // reset 
+        // reset
         reviewTimeout = 0;
         state = MilestoneState.ACTIVE;
 
         emit RejectCompleted(liquidPledging, idProject);
-    }   
+    }
 
     // @notice The reviewer can approve a completion request from the milestone manager
     // When he does, the milestone's state is set to completed and the funds can be
@@ -119,7 +119,7 @@ contract Milestone is AragonApp {
 
         state = MilestoneState.COMPLETED;
 
-        emit ApproveCompleted(liquidPledging, idProject);         
+        emit ApproveCompleted(liquidPledging, idProject);
     }
 
     // @notice The reviewer and the milestone manager can cancel a milestone.
@@ -128,14 +128,14 @@ contract Milestone is AragonApp {
         require(_canCancel());
 
         liquidPledging.cancelProject(idProject);
-    }    
+    }
 
     // @notice Only the current reviewer can change the reviewer.
     function changeReviewer(address newReviewer) isInitialized onlyReviewer external {
         reviewer = newReviewer;
 
         emit ReviewerChanged(liquidPledging, idProject, newReviewer);
-    }    
+    }
 
     /// @dev this is called by liquidPledging before every transfer to and from
     ///      a pledgeAdmin that has this contract as its plugin
@@ -147,13 +147,13 @@ contract Milestone is AragonApp {
         uint64 context,
         address token,
         uint amount
-    ) 
+    )
       isInitialized
-      external 
+      external
       returns (uint maxAllowed)
     {
         require(msg.sender == address(liquidPledging));
-        
+
         // token check
         if (acceptedToken != ANY_TOKEN && token != acceptedToken) {
             return 0;
@@ -166,7 +166,7 @@ contract Milestone is AragonApp {
         string newName,
         string newUrl,
         uint64 newCommitTime
-    ) 
+    )
       isInitialized
       external
     {
@@ -199,7 +199,7 @@ contract Milestone is AragonApp {
         uint _reviewTimeoutSeconds,
         address _acceptedToken,
         address _liquidPledging
-    ) internal 
+    ) internal
     {
         require(_manager != address(0));
         require(_liquidPledging != address(0));
@@ -213,10 +213,10 @@ contract Milestone is AragonApp {
             _parentProject,
             0,
             ILiquidPledgingPlugin(this)
-        ); 
+        );
 
-        reviewer = _reviewer;        
-        manager = _manager;        
+        reviewer = _reviewer;
+        manager = _manager;
         reviewTimeoutSeconds = _reviewTimeoutSeconds;
         acceptedToken = _acceptedToken;
     }
